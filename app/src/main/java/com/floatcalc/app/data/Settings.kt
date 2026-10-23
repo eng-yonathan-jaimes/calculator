@@ -8,7 +8,7 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK }
 /** Floating panel size presets, in dp. */
 @Serializable
 enum class OverlaySize(val widthDp: Int, val heightDp: Int) {
-    SMALL(256, 384),
+    SMALL(248, 400),
     MEDIUM(280, 420),
     LARGE(320, 480),
 }

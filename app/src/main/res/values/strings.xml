@@ -57,4 +57,36 @@
 
     <!-- Top bar -->
     <string name="action_history">History</string>
+    <string name="action_float">Floating calculator</string>
+
+    <!-- Overlay permission -->
+    <string name="overlay_permission_title">Allow the floating window</string>
+    <string name="overlay_permission_body">To stay on top of other apps, FloatCalc needs the “Display over other apps” permission. Tap Open settings and turn it on for FloatCalc, then come back.</string>
+    <string name="overlay_permission_restricted">If the switch is greyed out as a “Restricted setting” (common for apps installed from an APK on Android 15 and later), open App info, tap ⋮ in the top corner, choose Allow restricted settings, and try again.</string>
+    <string name="action_open_settings">Open settings</string>
+    <string name="action_app_info">App info</string>
+    <string name="action_not_now">Not now</string>
+
+    <!-- Floating window -->
+    <string name="overlay_drag_handle">Drag to move</string>
+    <string name="overlay_show_history">Show history</string>
+    <string name="overlay_show_keypad">Show keypad</string>
+    <string name="overlay_minimize">Minimize</string>
+    <string name="overlay_open_app">Open app</string>
+    <string name="overlay_bubble_description">Floating calculator</string>
+    <string name="overlay_expand">Expand</string>
+    <string name="overlay_dismiss_target">Drop here to close</string>
+    <string name="action_paste">Paste</string>
+    <string name="action_close">Close</string>
+    <string name="paste_empty">The clipboard is empty</string>
+    <string name="paste_invalid">No number to paste</string>
+
+    <!-- Notification -->
+    <string name="notification_channel_name">Floating calculator</string>
+    <string name="notification_channel_description">Shown while the floating calculator is running</string>
+    <string name="notification_title">Floating calculator is on</string>
+    <string name="notification_text">Tap to open FloatCalc</string>
+    <string name="notification_text_hidden">Hidden. Tap Show to bring it back.</string>
+    <string name="action_show">Show</string>
+    <string name="action_hide">Hide</string>
 </resources>

@@ -9,11 +9,14 @@ import com.floatcalc.app.R
 
 object Clipboard {
 
-    /** Copies [text]. Android 13+ confirms copies itself, so only older versions get a toast. */
-    fun copy(context: Context, text: String) {
+    /**
+     * Copies [text]. Android 13+ confirms copies itself, so a toast is shown only on older
+     * versions (and only if [showToast]; the floating window shows its own message instead).
+     */
+    fun copy(context: Context, text: String, showToast: Boolean = true) {
         val manager = context.getSystemService(ClipboardManager::class.java) ?: return
         manager.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.clip_label), text))
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+        if (showToast && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             Toast.makeText(context, R.string.copied, Toast.LENGTH_SHORT).show()
         }
     }
