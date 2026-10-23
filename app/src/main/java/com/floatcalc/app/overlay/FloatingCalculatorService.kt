@@ -32,6 +32,7 @@ import com.floatcalc.app.data.AppSettings
 import com.floatcalc.app.data.OverlayLayout
 import com.floatcalc.app.engine.DisplayFormatter
 import com.floatcalc.app.engine.PasteParser
+import com.floatcalc.app.tile.FloatTileService
 import com.floatcalc.app.util.Clipboard
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
@@ -108,6 +109,7 @@ class FloatingCalculatorService : Service() {
             return
         }
         FloatingCalculator.setRunning(true)
+        FloatTileService.requestUpdate(this)
         appOps = getSystemService(AppOpsManager::class.java)?.also {
             it.startWatchingMode(AppOpsManager.OPSTR_SYSTEM_ALERT_WINDOW, packageName, opChangedListener)
         }
@@ -136,6 +138,7 @@ class FloatingCalculatorService : Service() {
                 .collect { applySizeAndOpacity(container.settings.settings.value) }
         }
         scope.launch { FloatingCalculator.clipboardTexts.collect { handlePastedText(it) } }
+        scope.launch { FloatingCalculator.closeRequests.collect { stopSelf() } }
         scope.launch { userHidden.drop(1).collect { OverlayNotifications.update(this@FloatingCalculatorService, it) } }
     }
 
@@ -168,6 +171,7 @@ class FloatingCalculatorService : Service() {
         dismissTarget?.hide()
         scope.cancel()
         FloatingCalculator.setRunning(false)
+        FloatTileService.requestUpdate(this)
         if (::container.isInitialized) container.flush()
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         super.onDestroy()

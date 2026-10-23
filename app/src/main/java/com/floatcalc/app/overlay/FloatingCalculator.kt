@@ -32,8 +32,19 @@ object FloatingCalculator {
     /** Clipboard text read by [ClipboardReaderActivity] (the paste fallback). */
     internal val clipboardTexts: SharedFlow<String?> = _clipboardTexts.asSharedFlow()
 
+    private val _closeRequests = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    internal val closeRequests: SharedFlow<Unit> = _closeRequests.asSharedFlow()
+
     internal fun setRunning(running: Boolean) {
         _running.value = running
+    }
+
+    /** Closes a running floating calculator (it lives in this process, so no intent is needed). */
+    fun close() {
+        _closeRequests.tryEmit(Unit)
     }
 
     internal fun deliverClipboardText(text: String?) {

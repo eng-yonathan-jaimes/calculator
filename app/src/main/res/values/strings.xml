@@ -89,4 +89,11 @@
     <string name="notification_text_hidden">Hidden. Tap Show to bring it back.</string>
     <string name="action_show">Show</string>
     <string name="action_hide">Hide</string>
+
+    <!-- Quick Settings tile and launcher shortcut -->
+    <string name="tile_label">@string/app_name</string>
+    <string name="tile_on">On</string>
+    <string name="tile_off">Off</string>
+    <string name="shortcut_float_short">Float</string>
+    <string name="shortcut_float_long">Floating calculator</string>
 </resources>

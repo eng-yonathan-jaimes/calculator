@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static launcher shortcut. targetPackage is the application ID, so the debug build
+     (applicationIdSuffix ".debug") has its own copy of this file in src/debug. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_float"
+        android:shortcutId="floating_calculator"
+        android:shortcutLongLabel="@string/shortcut_float_long"
+        android:shortcutShortLabel="@string/shortcut_float_short">
+        <intent
+            android:action="com.floatcalc.app.action.OPEN_FLOATING"
+            android:targetClass="com.floatcalc.app.overlay.FloatLauncherActivity"
+            android:targetPackage="com.floatcalc.app.debug" />
+    </shortcut>
+</shortcuts>
