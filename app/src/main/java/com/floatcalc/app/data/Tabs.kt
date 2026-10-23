@@ -136,6 +136,14 @@ object TabOps {
     fun insert(state: TabsState, text: String): TabsState =
         updateTab(state, state.selected.id) { it.copy(calc = CalcEditor.insert(it.calc, text)) }
 
+    /** Moves the caret of the selected tab (null = end of the expression). */
+    fun moveCursor(state: TabsState, index: Int?): TabsState =
+        updateTab(state, state.selected.id) { it.copy(calc = CalcEditor.moveCursor(it.calc, index)) }
+
+    /** After "=", brings the selected tab's previous expression back for editing. */
+    fun editPrevious(state: TabsState): TabsState =
+        updateTab(state, state.selected.id) { it.copy(calc = CalcEditor.editPrevious(it.calc)) }
+
     fun clearHistory(state: TabsState, id: Long): TabsState = updateTab(state, id) { it.copy(history = emptyList()) }
 
     fun addToHistory(history: List<HistoryEntry>, entry: HistoryEntry): List<HistoryEntry> =

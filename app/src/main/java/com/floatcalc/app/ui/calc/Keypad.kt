@@ -42,7 +42,7 @@ import com.floatcalc.app.engine.CalcKey
 import com.floatcalc.app.engine.Operator
 
 enum class KeypadLayout {
-    /** Main app, 5 rows × 4: AC ( ) % ÷ | 7 8 9 × | 4 5 6 − | 1 2 3 + | ± 0 . = */
+    /** Main app, 5 rows × 4: AC ( ) % ÷ | 7 8 9 × | 4 5 6 − | 1 2 3 + | ⌫ 0 . = */
     Standard,
 
     /** Floating window, 4 rows × 5: 7 8 9 % ( ) | 4 5 6 − ÷ | 1 2 3 + × | ⌫ 0 . = AC */
@@ -74,37 +74,27 @@ private fun keypadRows(layout: KeypadLayout, labels: KeyLabels): List<List<KeyDe
     val percent = KeyDef("%", CalcKey.Percent, KeyRole.Operator, R.string.key_percent)
     val decimal = KeyDef(labels.decimal, CalcKey.Decimal, KeyRole.Number, R.string.key_decimal)
     val equals = KeyDef("=", CalcKey.Equals, KeyRole.Equals, R.string.key_equals)
+    val backspace = KeyDef(
+        label = "",
+        key = CalcKey.Backspace,
+        role = KeyRole.Number,
+        description = R.string.backspace,
+        icon = R.drawable.ic_backspace,
+        longPressKey = CalcKey.Clear,
+    )
     return when (layout) {
         KeypadLayout.Standard -> listOf(
             listOf(clear, parentheses, percent, op(Operator.DIVIDE, R.string.key_divide)),
             listOf(digit(7), digit(8), digit(9), op(Operator.TIMES, R.string.key_multiply)),
             listOf(digit(4), digit(5), digit(6), op(Operator.MINUS, R.string.key_minus)),
             listOf(digit(1), digit(2), digit(3), op(Operator.PLUS, R.string.key_plus)),
-            listOf(
-                KeyDef("±", CalcKey.ToggleSign, KeyRole.Number, R.string.key_toggle_sign),
-                digit(0),
-                decimal,
-                equals,
-            ),
+            listOf(backspace, digit(0), decimal, equals),
         )
         KeypadLayout.Compact -> listOf(
             listOf(digit(7), digit(8), digit(9), percent, parentheses),
             listOf(digit(4), digit(5), digit(6), op(Operator.MINUS, R.string.key_minus), op(Operator.DIVIDE, R.string.key_divide)),
             listOf(digit(1), digit(2), digit(3), op(Operator.PLUS, R.string.key_plus), op(Operator.TIMES, R.string.key_multiply)),
-            listOf(
-                KeyDef(
-                    "",
-                    CalcKey.Backspace,
-                    KeyRole.Number,
-                    R.string.backspace,
-                    icon = R.drawable.ic_backspace,
-                    longPressKey = CalcKey.Clear,
-                ),
-                digit(0),
-                decimal,
-                equals,
-                clear,
-            ),
+            listOf(backspace, digit(0), decimal, equals, clear),
         )
     }
 }

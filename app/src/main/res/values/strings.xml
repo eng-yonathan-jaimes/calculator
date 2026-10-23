@@ -38,7 +38,6 @@
     <string name="key_minus">minus</string>
     <string name="key_plus">plus</string>
     <string name="key_equals">equals</string>
-    <string name="key_toggle_sign">plus minus</string>
     <string name="key_decimal">decimal point</string>
     <string name="backspace">backspace</string>
     <string name="action_clear_all">clear all</string>
@@ -46,6 +45,7 @@
     <!-- Display and clipboard -->
     <string name="action_copy_result">Copy result</string>
     <string name="action_copy_expression">Copy expression</string>
+    <string name="action_edit_calculation">Edit calculation</string>
     <string name="action_reuse_result">Use result</string>
     <string name="copied">Copied</string>
     <string name="clip_label">FloatCalc</string>

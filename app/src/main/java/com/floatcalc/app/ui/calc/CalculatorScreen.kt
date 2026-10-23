@@ -168,6 +168,8 @@ fun CalculatorScreen(container: AppContainer, onFloat: () -> Unit, onOpenSetting
             onKey = tabs::press,
             onCopyResult = { Clipboard.copy(context, formatter.toClipboardNumber(it)) },
             onCopyExpression = { Clipboard.copy(context, it) },
+            onMoveCursor = tabs::moveCursor,
+            onEditPrevious = tabs::editPrevious,
             modifier = Modifier
                 .padding(padding)
                 .consumeWindowInsets(padding),
@@ -216,6 +218,8 @@ fun AnimatedTabDisplay(
     onCopyExpression: (String) -> Unit,
     modifier: Modifier = Modifier,
     style: DisplayStyle = DisplayStyle.Regular,
+    onMoveCursor: (Int?) -> Unit = {},
+    onEditPrevious: () -> Unit = {},
 ) {
     AnimatedContent(
         targetState = DisplayPage(tabId, tabIndex, calc),
@@ -234,13 +238,15 @@ fun AnimatedTabDisplay(
             onCopyExpression = onCopyExpression,
             modifier = Modifier.fillMaxSize(),
             style = style,
+            onMoveCursor = onMoveCursor,
+            onEditPrevious = onEditPrevious,
         )
     }
 }
 
 /**
- * Display + backspace + keypad. Stacked in portrait and in small windows; side by side when
- * the window is clearly wider than tall (landscape, wide split screen).
+ * Display + keypad (backspace is the keypad's bottom-left key). Stacked in portrait and in small
+ * windows; side by side when the window is clearly wider than tall (landscape, wide split screen).
  */
 @Composable
 fun CalculatorContent(
@@ -251,6 +257,8 @@ fun CalculatorContent(
     onKey: (CalcKey) -> Unit,
     onCopyResult: (String) -> Unit,
     onCopyExpression: (String) -> Unit,
+    onMoveCursor: (Int?) -> Unit,
+    onEditPrevious: () -> Unit,
     modifier: Modifier = Modifier,
     displayModifier: Modifier = Modifier,
 ) {
@@ -265,15 +273,9 @@ fun CalculatorContent(
                 onCopyResult = onCopyResult,
                 onCopyExpression = onCopyExpression,
                 modifier = m.then(displayModifier),
+                onMoveCursor = onMoveCursor,
+                onEditPrevious = onEditPrevious,
             )
-        }
-        val backspace: @Composable () -> Unit = {
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-                BackspaceButton(
-                    onBackspace = { onKey(CalcKey.Backspace) },
-                    onClear = { onKey(CalcKey.Clear) },
-                )
-            }
         }
         if (sideBySide) {
             Row(
@@ -282,14 +284,12 @@ fun CalculatorContent(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Column(
+                display(
                     Modifier
                         .weight(1f)
-                        .fillMaxHeight(),
-                ) {
-                    display(Modifier.weight(1f).fillMaxWidth())
-                    backspace()
-                }
+                        .fillMaxHeight()
+                        .padding(bottom = 8.dp),
+                )
                 Keypad(
                     onKey = onKey,
                     modifier = Modifier
@@ -304,8 +304,12 @@ fun CalculatorContent(
                     .widthIn(max = 640.dp)
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
-                display(Modifier.weight(1f).fillMaxWidth())
-                backspace()
+                display(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                )
                 Keypad(
                     onKey = onKey,
                     modifier = Modifier

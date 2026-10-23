@@ -290,6 +290,8 @@ fun OverlayPanel(container: AppContainer, ui: OverlayUiState, actions: PanelActi
                                         .padding(start = 8.dp, end = 4.dp)
                                         .pointerInput(tabs) { detectHorizontalSwipe { tabs.selectRelative(it) } },
                                     style = DisplayStyle.Compact,
+                                    onMoveCursor = tabs::moveCursor,
+                                    onEditPrevious = tabs::editPrevious,
                                 )
                             }
                         }

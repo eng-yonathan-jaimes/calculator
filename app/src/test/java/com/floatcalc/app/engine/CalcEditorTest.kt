@@ -209,4 +209,97 @@ class CalcEditorTest {
         assertEquals("99", replaced.expression)
         assertFalse(replaced.evaluated)
     }
+
+    private fun caretAt(state: CalcState, index: Int?) = CalcEditor.moveCursor(state, index)
+
+    @Test
+    fun digitIsInsertedAtTheCaret() {
+        val state = type("9", caretAt(type("1 2 3"), 1))
+        assertEquals("1923", state.expression)
+        assertEquals(2, state.cursor)
+    }
+
+    @Test
+    fun changeOneDigitInTheMiddle() {
+        val fixed = type("⌫ 3", caretAt(type("1 2 5 × 4"), 2))
+        assertEquals("135×4", fixed.expression)
+        assertEquals(2, fixed.cursor)
+        assertEquals(Preview.Value("540"), CalcEditor.preview(fixed))
+    }
+
+    @Test
+    fun backspaceDeletesBeforeTheCaret() {
+        val state = type("⌫", caretAt(type("1 2 + 3 4"), 3))
+        assertEquals("1234", state.expression)
+        assertEquals(2, state.cursor)
+        assertEquals("1234", type("⌫", caretAt(type("1 2 3 4"), 0)).expression)
+    }
+
+    @Test
+    fun caretPositionsAreClamped() {
+        val state = type("1 2 3")
+        assertEquals(0, caretAt(state, 0).cursor)
+        assertEquals(0, caretAt(state, -4).cursor)
+        assertNull(caretAt(state, 3).cursor)
+        assertNull(caretAt(state, 99).cursor)
+        assertNull(caretAt(state, null).cursor)
+    }
+
+    @Test
+    fun typingUpToTheEndDropsTheCaret() {
+        val state = type("⌫", caretAt(type("1 2 3"), 2))
+        assertEquals("13", state.expression)
+        assertEquals(1, state.cursor)
+        assertNull(type("9", caretAt(type("1 2"), 1)).let { caretAt(it, it.expression.length) }.cursor)
+    }
+
+    @Test
+    fun onePointPerNumberAcrossTheCaret() {
+        assertEquals("12.5", type(".", caretAt(type("1 2 . 5"), 1)).expression)
+        assertEquals("12.34", type(".", caretAt(type("1 2 3 4"), 2)).expression)
+    }
+
+    @Test
+    fun operatorsAtTheCaret() {
+        assertEquals("12×34", type("×", caretAt(type("1 2 3 4"), 2)).expression)
+        assertEquals("5×3", type("×", caretAt(type("5 + 3"), 2)).expression)
+        assertEquals("3−1234", type("±", caretAt(type("3 + 1 2 3 4"), 4)).expression)
+    }
+
+    @Test
+    fun equalsUsesTheWholeExpressionAndDropsTheCaret() {
+        val state = type("=", caretAt(type("1 + 2 3"), 1))
+        assertEquals("24", state.expression)
+        assertTrue(state.evaluated)
+        assertNull(state.cursor)
+        assertEquals(state, caretAt(state, 0))
+    }
+
+    @Test
+    fun clearWorksWithACaret() {
+        assertEquals(CalcState(), type("AC", caretAt(type("1 2"), 1)))
+    }
+
+    @Test
+    fun pasteAtTheCaret() {
+        val state = CalcEditor.insert(caretAt(type("() 2 + 3 ()"), 0), "5")
+        assertEquals("5(2+3)", state.expression)
+        assertEquals(1, state.cursor)
+    }
+
+    @Test
+    fun editPreviousBringsTheCalculationBack() {
+        val state = CalcEditor.editPrevious(type("2 + 3 ="))
+        assertEquals("2+3", state.expression)
+        assertFalse(state.evaluated)
+        assertEquals(Preview.Value("5"), CalcEditor.preview(state))
+        assertEquals("7", CalcEditor.editPrevious(type("7")).expression)
+    }
+
+    @Test
+    fun editPreviousStaysExact() {
+        val state = CalcEditor.editPrevious(type("1 ÷ 3 = × 3 ="))
+        assertEquals("0.3333333333333333×3", state.expression)
+        assertEquals(Preview.Value("1"), CalcEditor.preview(state))
+    }
 }

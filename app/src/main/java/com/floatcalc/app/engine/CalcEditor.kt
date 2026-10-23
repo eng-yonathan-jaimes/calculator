@@ -18,6 +18,11 @@ data class CalcState(
     val anchorExact: String = "",
     /** Gentle error shown after "=" failed; cleared by the next key. */
     val error: CalcError? = null,
+    /** Caret position inside [expression] (0 until its length), or null when typing at the end. */
+    val cursor: Int? = null,
+    /** The anchor of [previousExpression], so editing it again stays exact. */
+    val previousAnchorText: String = "",
+    val previousAnchorExact: String = "",
 )
 
 sealed interface CalcKey {
@@ -53,6 +58,10 @@ object CalcEditor {
     private val plainNumber = Regex("^−?(\\d+\\.?\\d*|\\.\\d+)(E[+−-]?\\d+)?$")
 
     fun apply(state: CalcState, key: CalcKey): EditResult {
+        val cursor = state.cursor
+        if (cursor != null && !state.evaluated && key != CalcKey.Equals && key != CalcKey.Clear) {
+            return EditResult(applyAtCursor(state.copy(error = null), key, cursor))
+        }
         val clean = state.copy(error = null)
         return when (key) {
             is CalcKey.Digit -> EditResult(digit(clean, key.digit))
@@ -95,6 +104,12 @@ object CalcEditor {
      */
     fun insert(state: CalcState, text: String): CalcState {
         if (text.isEmpty()) return state
+        val cursor = state.cursor
+        if (cursor != null && !state.evaluated) {
+            val (prefix, suffix) = splitAt(state, cursor)
+            val newPrefix = insert(state.copy(expression = prefix, cursor = null), text).expression
+            return joinAtCursor(state.copy(error = null), newPrefix, suffix)
+        }
         val expression = state.expression
         if (state.evaluated || expression.isEmpty()) return CalcState(expression = text)
         val operand = if (isUnsignedNumber(text)) text else "${Symbols.OPEN}$text${Symbols.CLOSE}"
@@ -107,7 +122,59 @@ object CalcEditor {
         return state.copy(expression = joined, error = null).withValidAnchor()
     }
 
+    /**
+     * Places the caret before character [index] of the expression; the end of the expression (or
+     * null) means typing appends. A result shown after "=" has no caret.
+     */
+    fun moveCursor(state: CalcState, index: Int?): CalcState {
+        if (state.evaluated) return state
+        return state.copy(cursor = index?.coerceAtLeast(0)?.takeIf { it < state.expression.length })
+    }
+
+    /** After "=", brings the calculation that produced the result back for editing. */
+    fun editPrevious(state: CalcState): CalcState {
+        if (!state.evaluated || state.previousExpression.isEmpty()) return state
+        return CalcState(
+            expression = state.previousExpression,
+            anchorText = state.previousAnchorText,
+            anchorExact = state.previousAnchorExact,
+        ).withValidAnchor()
+    }
+
     fun isPlainNumber(text: String): Boolean = plainNumber.matches(text)
+
+    /**
+     * Edits in the middle of the expression: the input rules see only the text before the caret
+     * (as if typing at the end), and the text after the caret is kept as it is.
+     */
+    private fun applyAtCursor(state: CalcState, key: CalcKey, cursor: Int): CalcState {
+        val (prefix, suffix) = splitAt(state, cursor)
+        val newPrefix = when (key) {
+            CalcKey.Backspace -> prefix.dropLast(1)
+            // One decimal point per number, also when the number continues after the caret.
+            CalcKey.Decimal -> if (leadingNumber(suffix).any { it == Symbols.POINT || it == Symbols.EXPONENT }) {
+                prefix
+            } else {
+                apply(state.copy(expression = prefix, cursor = null), key).state.expression
+            }
+            else -> apply(state.copy(expression = prefix, cursor = null), key).state.expression
+        }
+        return joinAtCursor(state, newPrefix, suffix)
+    }
+
+    private fun splitAt(state: CalcState, cursor: Int): Pair<String, String> {
+        val at = cursor.coerceIn(0, state.expression.length)
+        return state.expression.substring(0, at) to state.expression.substring(at)
+    }
+
+    private fun joinAtCursor(state: CalcState, prefix: String, suffix: String): CalcState =
+        state.copy(
+            expression = prefix + suffix,
+            cursor = if (suffix.isEmpty()) null else prefix.length,
+        ).withValidAnchor()
+
+    private fun leadingNumber(text: String): String =
+        text.takeWhile { it.isDigit() || it == Symbols.POINT || it == Symbols.EXPONENT }
 
     private fun isUnsignedNumber(text: String) = isPlainNumber(text) && !text.startsWith(Symbols.MINUS)
 
@@ -239,6 +306,7 @@ object CalcEditor {
             is EvalResult.Success -> {
                 val formatted = NumberFormatter.format(result.value)
                 val isCalculation = !isPlainNumber(expression)
+                val keepAnchor = isCalculation && state.hasValidAnchor()
                 EditResult(
                     state = CalcState(
                         expression = formatted,
@@ -246,6 +314,8 @@ object CalcEditor {
                         previousExpression = if (isCalculation) expression else "",
                         anchorText = formatted,
                         anchorExact = NumberFormatter.exact(result.value),
+                        previousAnchorText = if (keepAnchor) state.anchorText else "",
+                        previousAnchorExact = if (keepAnchor) state.anchorExact else "",
                     ),
                     evaluation = if (isCalculation) Evaluation(expression, formatted) else null,
                 )

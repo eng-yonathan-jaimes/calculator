@@ -15,7 +15,10 @@ you can calculate (and copy/paste numbers) while using any app.
 - Percent: `a + b%` = a + a·b/100, `a − b%` = a − a·b/100, `a × b%` = a·b/100, `a ÷ b%` = a ÷ (b/100), `b%` = b/100.
 - Live result while typing, gentle errors ("Can't divide by 0", "Incomplete expression"), never crashes.
 - Numbers use your locale's grouping and decimal separators; the `.` key shows your decimal separator.
-- One smart `( )` key, `±` flips the sign of the current number, backspace (long-press clears).
+- One smart `( )` key; backspace is the bottom-left key (long-press clears everything).
+- **Caret editing:** tap anywhere in the expression to place a blinking caret, then type, paste or
+  backspace there to fix a single digit. After `=`, tap the small calculation above the result to
+  bring it back for editing.
 - Tap the result to copy it, long-press the expression to copy the expression.
 
 **Tabs**
@@ -151,11 +154,17 @@ does:
   for 10¹⁶ and above and below 10⁻⁹; plain numbers are used otherwise.
 - After `=`, the shown (rounded) result keeps its exact value behind the scenes, so chained
   calculations stay exact (`1 ÷ 3 = × 3 =` gives 1). Editing the result's digits drops that.
-- After `=`: an operator or `%` continues from the result; a digit, `.` or `( )` starts fresh; `±`
-  negates the result; backspace clears it (like the Pixel calculator's CLR).
+- After `=`: an operator or `%` continues from the result; a digit, `.` or `( )` starts fresh;
+  backspace clears it (like the Pixel calculator's CLR).
+- Keypads: main app `AC ( ) % ÷` / `7 8 9 ×` / `4 5 6 −` / `1 2 3 +` / `⌫ 0 . =`. There is no `±` key
+  (at your request): type `−` before a number, or place the caret and add/remove it. The engine still
+  supports sign toggling (tested) in case a key is wanted again.
+- Caret: the input rules apply to the text before the caret as if you were typing at the end, and
+  the text after it is kept (e.g. `12|34` + `.` → `12.34`; a second point in the same number is
+  refused even if it is after the caret). A tap on the result after `=` still copies it, so the
+  previous calculation (the small line above) is what you tap to edit. The caret is shown only when
+  it is not at the end; `=` evaluates the whole expression and removes it.
 - A digit or `.` typed right after `)` or `%` inserts `×` (`(2)×3`).
-- `±` on a number after a binary `+`/`−` swaps that operator (`3−5` → `3+5`, which equals `3−(−5)`);
-  after `×`, `÷`, `(` or at the start it adds/removes a unary minus.
 - The leading zero is replaced (`0` then `5` → `5`).
 - Copied results are plain numbers: no grouping, your locale's decimal separator (what local apps
   expect), and an ASCII `-` for negatives. Copying an expression copies it as displayed.
@@ -176,7 +185,7 @@ does:
 - Compact layout: a header (⠿ drag handle, + new tab, History/Keypad toggle, Paste, then Minimize,
   Open app, Close; the empty middle of the header also drags), the tab chips stacked vertically to the
   left of the display, and a 5×4 keypad `7 8 9 % ( )` / `4 5 6 − ÷` / `1 2 3 + ×` / `⌫ 0 . = AC` with
-  backspace as a key (long-press clears). The floating keypad has no ± key. The live result is bold.
+  backspace as a key (long-press clears). The live result is bold. Caret editing works here too.
 - Long-pressing a tab in the floating window shows an inline Rename / Duplicate / Close row instead
   of a popup menu: popups and dialogs need input focus, which the non-focusable overlay must not
   take. Close shows an Undo message inside the panel.
@@ -228,16 +237,16 @@ does:
 
 ## Tests
 
-`./gradlew testDebugUnitTest` runs 77 JVM unit tests:
+`./gradlew testDebugUnitTest` runs 90 JVM unit tests:
 
 - `CalculatorTest`: precedence, parentheses (incl. auto-close), implicit multiplication, unary minus,
   every percent rule, decimal precision, divide by zero, incomplete and malformed input, exponents,
   deep nesting.
 - `FormattingTest`: trailing zeros, rounding, scientific notation, locale separators (incl. Indian
-  grouping), expression formatting, clipboard form.
+  grouping), expression formatting, caret position mapping, clipboard form.
 - `CalcEditorTest`: input rules: live preview, `=` and gentle errors, behavior after `=`, exact
   chaining, operator replacement, one decimal point per number, leading zero, smart parentheses,
-  `±`, `%`, backspace/clear, paste insertion.
+  `±`, `%`, backspace/clear, paste insertion, editing at the caret, editing the previous calculation.
 - `PasteParserTest`: numbers, grouping/currency stripping, locale-ambiguous separators, simple
   expressions, rejecting unusable text.
 - `TabOpsTest` / `TabsRepositoryTest`: add, close (incl. last tab), undo, rename, duplicate, 20-tab

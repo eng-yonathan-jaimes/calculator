@@ -23,6 +23,10 @@ class TabsRepository(
 
     fun insert(text: String) = persisted.update { TabOps.insert(it, text) }
 
+    fun moveCursor(index: Int?) = persisted.update { TabOps.moveCursor(it, index) }
+
+    fun editPrevious() = persisted.update(TabOps::editPrevious)
+
     /** Returns false when the tab limit is reached. */
     fun addTab(): Boolean {
         if (!state.value.canAddTab) return false

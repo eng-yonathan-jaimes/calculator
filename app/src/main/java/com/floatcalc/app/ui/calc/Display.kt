@@ -17,6 +17,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDirection
@@ -52,8 +55,10 @@ data class DisplayStyle(
 private val NumberTextStyle = TextStyle(textDirection = TextDirection.Ltr)
 
 /**
- * Expression (auto-shrinking) with the live result underneath. Tapping the result copies it,
- * long-pressing the expression copies the expression.
+ * Expression (auto-shrinking) with the live result underneath. Tapping the expression places the
+ * caret ([onMoveCursor], an index into the internal expression); tapping a result copies it;
+ * long-pressing the expression copies the expression. After "=", tapping the small previous
+ * expression brings it back for editing ([onEditPrevious]).
  */
 @Composable
 fun CalculatorDisplay(
@@ -63,11 +68,15 @@ fun CalculatorDisplay(
     onCopyExpression: (text: String) -> Unit,
     modifier: Modifier = Modifier,
     style: DisplayStyle = DisplayStyle.Regular,
+    onMoveCursor: (Int?) -> Unit = {},
+    onEditPrevious: () -> Unit = {},
 ) {
     val preview = remember(calc) { CalcEditor.preview(calc) }
+    val formatted = remember(calc.expression, formatter) { formatter.formatExpressionMapped(calc.expression) }
     val colors = MaterialTheme.colorScheme
     val copyResultLabel = stringResource(R.string.action_copy_result)
     val copyExpressionLabel = stringResource(R.string.action_copy_expression)
+    val editLabel = stringResource(R.string.action_edit_calculation)
 
     // Numbers and operators always read left to right, also in RTL locales.
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
@@ -87,25 +96,47 @@ fun CalculatorDisplay(
                         color = colors.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.StartEllipsis,
+                        modifier = Modifier.combinedClickable(
+                            interactionSource = null,
+                            indication = null,
+                            onClickLabel = editLabel,
+                            onClick = onEditPrevious,
+                        ),
                     )
                 }
-                val expressionText = formatter.formatExpression(calc.expression)
+                val expressionText = formatted.text
+                val caret = calc.cursor?.takeIf { !calc.evaluated && expressionText.isNotEmpty() }
                 AutoShrinkText(
                     text = expressionText.ifEmpty { "0" },
                     style = NumberTextStyle.copy(fontWeight = FontWeight.Normal),
                     maxFontSize = style.expressionMax,
                     minFontSize = style.expressionMin,
                     color = if (expressionText.isEmpty()) colors.onSurfaceVariant else colors.onSurface,
+                    caretOffset = caret?.let { formatted.displayOffset(it) },
+                    caretColor = colors.primary,
+                    onTapOffset = { offset ->
+                        when {
+                            calc.evaluated -> onCopyResult(calc.expression)
+                            expressionText.isNotEmpty() -> onMoveCursor(formatted.internalOffset(offset))
+                        }
+                    },
+                    onLongPress = { if (expressionText.isNotEmpty()) onCopyExpression(expressionText) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .combinedClickable(
-                            interactionSource = null,
-                            indication = null,
-                            onClickLabel = if (calc.evaluated) copyResultLabel else null,
-                            onLongClickLabel = copyExpressionLabel,
-                            onLongClick = { if (expressionText.isNotEmpty()) onCopyExpression(expressionText) },
-                            onClick = { if (calc.evaluated) onCopyResult(calc.expression) },
-                        ),
+                        .semantics {
+                            if (calc.evaluated) {
+                                onClick(label = copyResultLabel) {
+                                    onCopyResult(calc.expression)
+                                    true
+                                }
+                            }
+                            if (expressionText.isNotEmpty()) {
+                                onLongClick(label = copyExpressionLabel) {
+                                    onCopyExpression(expressionText)
+                                    true
+                                }
+                            }
+                        },
                 )
             }
             Box(

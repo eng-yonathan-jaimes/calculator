@@ -98,4 +98,19 @@ class FormattingTest {
         assertEquals(2, DisplayFormatter.secondaryGroupingOf("#,##,##0.###"))
         assertNull(DisplayFormatter.secondaryGroupingOf("#,##0.###"))
     }
+
+    @Test
+    fun mapsCaretPositionsAcrossGroupingSeparators() {
+        val mapped = us.formatExpressionMapped("1234+5")
+        assertEquals("1,234+5", mapped.text)
+        assertEquals(listOf(0, 2, 3, 4, 5, 6, 7), (0..6).map { mapped.displayOffset(it) })
+        assertEquals(1, mapped.internalOffset(1))
+        assertEquals(1, mapped.internalOffset(2))
+        assertEquals(4, mapped.internalOffset(5))
+        assertEquals(6, mapped.internalOffset(7))
+        val decimalComma = german.formatExpressionMapped("1234.5")
+        assertEquals("1.234,5", decimalComma.text)
+        assertEquals(5, decimalComma.displayOffset(4))
+        assertEquals(6, decimalComma.displayOffset(5))
+    }
 }
