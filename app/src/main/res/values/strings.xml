@@ -4,6 +4,20 @@
 
     <!-- Tabs -->
     <string name="tab_default_name">Calc %1$d</string>
+    <string name="tab_name">Tab name</string>
+    <string name="tab_options">Tab options</string>
+    <string name="action_add_tab">New tab</string>
+    <string name="action_rename_tab">Rename</string>
+    <string name="action_duplicate_tab">Duplicate</string>
+    <string name="action_close_tab">Close</string>
+    <string name="tab_closed">Closed %1$s</string>
+    <string name="action_undo">Undo</string>
+    <plurals name="max_tabs_reached">
+        <item quantity="one">You can have up to %1$d tab</item>
+        <item quantity="other">You can have up to %1$d tabs</item>
+    </plurals>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
 
     <!-- Errors shown in the result line -->
     <string name="error_incomplete">Incomplete expression</string>

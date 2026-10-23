@@ -1,15 +1,18 @@
 package com.floatcalc.app.data
 
-import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.datastore.core.DataStore
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 
-class SettingsRepository {
-    private val _settings = MutableStateFlow(AppSettings())
-    val settings: StateFlow<AppSettings> = _settings.asStateFlow()
-
-    fun update(transform: (AppSettings) -> AppSettings) {
-        _settings.update(transform)
+class SettingsRepository(store: DataStore<AppSettings>, scope: CoroutineScope) {
+    private val persisted = PersistedState(store, scope, AppSettings()) {
+        it.copy(overlayOpacity = it.overlayOpacity.coerceIn(AppSettings.MIN_OPACITY, 1f))
     }
+
+    val settings: StateFlow<AppSettings> = persisted.value
+    val loaded: StateFlow<Boolean> = persisted.loaded
+
+    fun update(transform: (AppSettings) -> AppSettings) = persisted.update(transform)
+
+    fun flush() = persisted.flush()
 }

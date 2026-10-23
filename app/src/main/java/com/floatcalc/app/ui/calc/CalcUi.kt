@@ -1,6 +1,6 @@
 package com.floatcalc.app.ui.calc
 
-import android.content.Context
+import android.content.res.Resources
 import android.view.HapticFeedbackConstants
 import androidx.annotation.StringRes
 import androidx.compose.foundation.combinedClickable
@@ -58,7 +58,7 @@ fun CalcError.messageRes(): Int = when (this) {
 @Composable
 fun tabName(tab: CalcTab): String = tab.customName ?: stringResource(R.string.tab_default_name, tab.number)
 
-fun Context.tabName(tab: CalcTab): String = tab.customName ?: getString(R.string.tab_default_name, tab.number)
+fun Resources.tabName(tab: CalcTab): String = tab.customName ?: getString(R.string.tab_default_name, tab.number)
 
 /** Backspace icon button; long-press clears everything. */
 @Composable
