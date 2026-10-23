@@ -76,11 +76,23 @@ object CalcEditor {
         }.let { it.copy(state = it.state.withValidAnchor()) }
     }
 
-    /** Live result shown under the expression while typing. */
+    /**
+     * Live result shown under the expression while typing. A trailing operator or "(" is ignored,
+     * so `2×3+` keeps showing 6 until the next number is typed.
+     */
     fun preview(state: CalcState): Preview {
         state.error?.let { return Preview.Error(it) }
-        if (state.evaluated || state.expression.isEmpty() || isPlainNumber(state.expression)) return Preview.None
-        return when (val result = evaluate(state)) {
+        if (state.evaluated || state.expression.isEmpty()) return Preview.None
+        var candidate = state
+        var result = evaluate(candidate)
+        while (result is EvalResult.Failure && result.error == CalcError.INCOMPLETE &&
+            candidate.expression.lastOrNull()?.let(::isIgnorableAtEnd) == true
+        ) {
+            candidate = candidate.copy(expression = candidate.expression.dropLast(1))
+            result = evaluate(candidate)
+        }
+        if (candidate.expression.isEmpty() || isPlainNumber(candidate.expression)) return Preview.None
+        return when (result) {
             is EvalResult.Success -> Preview.Value(NumberFormatter.format(result.value))
             is EvalResult.Failure -> when (result.error) {
                 CalcError.DIVIDE_BY_ZERO, CalcError.OVERFLOW -> Preview.Error(result.error)
@@ -172,6 +184,9 @@ object CalcEditor {
             expression = prefix + suffix,
             cursor = if (suffix.isEmpty()) null else prefix.length,
         ).withValidAnchor()
+
+    private fun isIgnorableAtEnd(c: Char): Boolean =
+        Symbols.isOperator(c) || c == Symbols.OPEN || c == Symbols.EXPONENT
 
     private fun leadingNumber(text: String): String =
         text.takeWhile { it.isDigit() || it == Symbols.POINT || it == Symbols.EXPONENT }

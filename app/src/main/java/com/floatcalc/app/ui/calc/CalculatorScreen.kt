@@ -288,7 +288,7 @@ fun CalculatorContent(
                     Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .padding(bottom = 8.dp),
+                        .padding(top = 8.dp, bottom = 8.dp),
                 )
                 Keypad(
                     onKey = onKey,
@@ -308,7 +308,7 @@ fun CalculatorContent(
                     Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .padding(bottom = 12.dp),
+                        .padding(top = 16.dp, bottom = 12.dp),
                 )
                 Keypad(
                     onKey = onKey,

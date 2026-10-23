@@ -1,9 +1,6 @@
 package com.floatcalc.app.ui.calc
 
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.keyframes
-import androidx.compose.animation.core.rememberInfiniteTransition
+import android.graphics.Typeface
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,16 +24,26 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+
+/** The system's condensed sans-serif (Roboto Condensed): narrower, taller-looking digits. */
+private val CondensedFamily = FontFamily(Typeface.create("sans-serif-condensed", Typeface.NORMAL))
+
+private data class TextFit(val fontSize: TextUnit, val condensed: Boolean, val wrap: Boolean)
 
 /**
- * Single-line text that shrinks from [maxFontSize] to [minFontSize] to fit. If it still does not
- * fit, it wraps at the minimum size and scrolls to show the end (where typing happens).
+ * Text that fits itself into the available space, in this order:
+ * 1. one line at [maxFontSize];
+ * 2. one line in the condensed font, shrinking down to [wrapFontSize] (or [minFontSize]);
+ * 3. if [wrapFontSize] is set: several lines, condensed, shrinking down to [minFontSize];
+ * 4. otherwise the smallest size, scrolled to the end.
  *
  * Optionally draws a blinking caret before character [caretOffset] and reports taps as the
  * character offset under the finger ([onTapOffset]).
@@ -49,16 +56,17 @@ fun AutoShrinkText(
     minFontSize: TextUnit,
     modifier: Modifier = Modifier,
     color: Color = Color.Unspecified,
+    wrapFontSize: TextUnit? = null,
     caretOffset: Int? = null,
     caretColor: Color = Color.Unspecified,
     onTapOffset: ((Int) -> Unit)? = null,
     onLongPress: (() -> Unit)? = null,
 ) {
-    val measurer = rememberTextMeasurer(cacheSize = 16)
+    val measurer = rememberTextMeasurer(cacheSize = 32)
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     val tapHandler by rememberUpdatedState(onTapOffset)
     val longPressHandler by rememberUpdatedState(onLongPress)
-    val caretAlpha = if (caretOffset != null) rememberBlinkingAlpha() else null
+    val caretVisible = if (caretOffset != null) rememberCaretBlink(text, caretOffset) else null
 
     val interactive = Modifier
         .pointerInput(onTapOffset != null, onLongPress != null) {
@@ -72,31 +80,33 @@ fun AutoShrinkText(
             drawContent()
             val textLayout = layout ?: return@drawWithContent
             val offset = caretOffset ?: return@drawWithContent
-            val alpha = caretAlpha?.value ?: return@drawWithContent
-            if (offset > textLayout.layoutInput.text.length || alpha <= 0f) return@drawWithContent
+            if (caretVisible?.value != true || offset > textLayout.layoutInput.text.length) return@drawWithContent
             val rect = textLayout.getCursorRect(offset)
             drawLine(
-                color = caretColor.copy(alpha = caretColor.alpha * alpha),
+                color = caretColor,
                 start = Offset(rect.left, rect.top),
                 end = Offset(rect.left, rect.bottom),
                 strokeWidth = 2.dp.toPx(),
             )
         }
 
-    BoxWithConstraints(modifier, contentAlignment = Alignment.BottomEnd) {
+    BoxWithConstraints(modifier, contentAlignment = Alignment.TopEnd) {
         val maxWidth = constraints.maxWidth
         val maxHeight = constraints.maxHeight
-        val fitting = remember(text, style, maxWidth, maxHeight, maxFontSize, minFontSize) {
-            fittingFontSize(measurer, text, style, maxWidth, maxHeight, maxFontSize, minFontSize)
+        val fit = remember(text, style, maxWidth, maxHeight, maxFontSize, minFontSize, wrapFontSize) {
+            fitText(measurer, text, style, maxWidth, maxHeight, maxFontSize, minFontSize, wrapFontSize)
         }
-        if (fitting != null) {
+        val fittedStyle = style.copy(
+            fontSize = fit.fontSize,
+            fontFamily = if (fit.condensed) CondensedFamily else style.fontFamily,
+            textAlign = TextAlign.End,
+        )
+        if (!fit.wrap) {
             Text(
                 text = text,
-                style = style.copy(fontSize = fitting, textAlign = TextAlign.End),
+                style = fittedStyle,
                 color = color,
                 maxLines = 1,
-                // Lays out across the full width (it fits on one line) so End alignment holds.
-                softWrap = true,
                 onTextLayout = { layout = it },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -104,10 +114,11 @@ fun AutoShrinkText(
             )
         } else {
             val scroll = rememberScrollState()
-            LaunchedEffect(text, scroll.maxValue) { if (caretOffset == null) scroll.scrollTo(scroll.maxValue) }
+            val caretAtEnd = caretOffset == null || caretOffset >= text.length
+            LaunchedEffect(text, scroll.maxValue) { if (caretAtEnd) scroll.scrollTo(scroll.maxValue) }
             Text(
                 text = text,
-                style = style.copy(fontSize = minFontSize, textAlign = TextAlign.End),
+                style = fittedStyle,
                 color = color,
                 onTextLayout = { layout = it },
                 modifier = Modifier
@@ -119,29 +130,24 @@ fun AutoShrinkText(
     }
 }
 
-/** 1 → 0 → 1 every second, like a text cursor. */
+/** Blinks every 0.5 s, starting visible again whenever the text or caret position changes. */
 @Composable
-private fun rememberBlinkingAlpha(): State<Float> {
-    val transition = rememberInfiniteTransition(label = "caret")
-    return transition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            keyframes {
-                durationMillis = 1_000
-                1f at 0
-                1f at 499
-                0f at 500
-                0f at 999
-            },
-        ),
-        label = "caretAlpha",
-    )
+private fun rememberCaretBlink(text: String, offset: Int): State<Boolean> {
+    val visible = remember { mutableStateOf(true) }
+    LaunchedEffect(text, offset) {
+        visible.value = true
+        while (true) {
+            delay(CARET_BLINK_MS)
+            visible.value = !visible.value
+        }
+    }
+    return visible
 }
 
+private const val CARET_BLINK_MS = 500L
 private const val STEP_SP = 2f
 
-private fun fittingFontSize(
+private fun fitText(
     measurer: TextMeasurer,
     text: String,
     style: TextStyle,
@@ -149,19 +155,49 @@ private fun fittingFontSize(
     maxHeight: Int,
     maxFontSize: TextUnit,
     minFontSize: TextUnit,
-): TextUnit? {
-    var size = maxFontSize.value
-    while (true) {
-        val layout = measurer.measure(
+    wrapFontSize: TextUnit?,
+): TextFit {
+    fun fitsOneLine(size: Float, condensed: Boolean): Boolean {
+        val result = measurer.measure(
             text = text,
-            style = style.copy(fontSize = size.sp),
+            style = style.copy(fontSize = size.sp, fontFamily = if (condensed) CondensedFamily else style.fontFamily),
             maxLines = 1,
             softWrap = false,
             constraints = Constraints(),
         )
-        val fitsHeight = maxHeight == Constraints.Infinity || layout.size.height <= maxHeight
-        if (layout.size.width <= maxWidth && fitsHeight) return size.sp
-        if (size <= minFontSize.value) return null
-        size = maxOf(size - STEP_SP, minFontSize.value)
+        return result.size.width <= maxWidth && fitsHeight(result.size.height, maxHeight)
     }
+
+    fun fitsWrapped(size: Float): Boolean {
+        val result = measurer.measure(
+            text = text,
+            style = style.copy(fontSize = size.sp, fontFamily = CondensedFamily),
+            softWrap = true,
+            constraints = Constraints(maxWidth = maxWidth),
+        )
+        return fitsHeight(result.size.height, maxHeight)
+    }
+
+    val max = maxFontSize.value
+    val min = minFontSize.value
+    if (fitsOneLine(max, condensed = false)) return TextFit(maxFontSize, condensed = false, wrap = false)
+
+    val oneLineFloor = wrapFontSize?.value?.coerceIn(min, max) ?: min
+    var size = max
+    while (true) {
+        if (fitsOneLine(size, condensed = true)) return TextFit(size.sp, condensed = true, wrap = false)
+        if (size <= oneLineFloor) break
+        size = maxOf(size - STEP_SP, oneLineFloor)
+    }
+    if (wrapFontSize == null) return TextFit(minFontSize, condensed = true, wrap = false)
+
+    size = oneLineFloor
+    while (true) {
+        if (fitsWrapped(size)) return TextFit(size.sp, condensed = true, wrap = true)
+        if (size <= min) break
+        size = maxOf(size - STEP_SP, min)
+    }
+    return TextFit(minFontSize, condensed = true, wrap = true)
 }
+
+private fun fitsHeight(height: Int, maxHeight: Int) = maxHeight == Constraints.Infinity || height <= maxHeight

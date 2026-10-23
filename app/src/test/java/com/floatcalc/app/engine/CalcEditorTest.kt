@@ -39,6 +39,19 @@ class CalcEditorTest {
     }
 
     @Test
+    fun previewIgnoresATrailingOperator() {
+        assertEquals(Preview.Value("5"), CalcEditor.preview(type("2 + 3 ×")))
+        assertEquals(Preview.Value("632"), CalcEditor.preview(type("3 1 6 × 2 +")))
+        assertEquals(Preview.Value("6"), CalcEditor.preview(type("2 × () 3 +")))
+        assertEquals(Preview.Value("10"), CalcEditor.preview(type("5 × 2 × −")))
+        assertEquals(Preview.Error(CalcError.DIVIDE_BY_ZERO), CalcEditor.preview(type("5 ÷ 0 +")))
+        assertEquals(Preview.None, CalcEditor.preview(type("2 +")))
+        assertEquals(Preview.None, CalcEditor.preview(type("−")))
+        // "=" still treats it as incomplete.
+        assertEquals(CalcError.INCOMPLETE, type("2 + 3 × =").error)
+    }
+
+    @Test
     fun equalsShowsResultAndRecordsTheCalculation() {
         val result = CalcEditor.apply(type("2 + 3"), CalcKey.Equals)
         assertEquals("5", result.state.expression)

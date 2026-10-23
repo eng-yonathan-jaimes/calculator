@@ -13,7 +13,10 @@ you can calculate (and copy/paste numbers) while using any app.
 - `+ − × ÷`, parentheses, implicit multiplication (`2(3+4)`), unary minus, decimals and `%`.
 - Exact decimal math (`BigDecimal`, 34 significant digits): `0.1 + 0.2 = 0.3`, `1 ÷ 3 × 3 = 1`.
 - Percent: `a + b%` = a + a·b/100, `a − b%` = a − a·b/100, `a × b%` = a·b/100, `a ÷ b%` = a ÷ (b/100), `b%` = b/100.
-- Live result while typing, gentle errors ("Can't divide by 0", "Incomplete expression"), never crashes.
+- Live result while typing (a trailing operator is ignored, so `2×3+` still shows 6), gentle errors
+  ("Can't divide by 0", "Incomplete expression"), never crashes.
+- The expression and result sit at the top of the display. A long expression first switches to
+  narrower (condensed) digits at full height, then shrinks, then wraps onto more lines.
 - Numbers use your locale's grouping and decimal separators; the `.` key shows your decimal separator.
 - One smart `( )` key; backspace is the bottom-left key (long-press clears everything).
 - **Caret editing:** tap anywhere in the expression to place a blinking caret, then type, paste or
@@ -162,8 +165,8 @@ does:
 - Caret: the input rules apply to the text before the caret as if you were typing at the end, and
   the text after it is kept (e.g. `12|34` + `.` → `12.34`; a second point in the same number is
   refused even if it is after the caret). A tap on the result after `=` still copies it, so the
-  previous calculation (the small line above) is what you tap to edit. The caret is shown only when
-  it is not at the end; `=` evaluates the whole expression and removes it.
+  previous calculation (the small line above) is what you tap to edit. While editing, the caret is
+  always shown (blinking at the end by default); `=` evaluates the whole expression and removes it.
 - A digit or `.` typed right after `)` or `%` inserts `×` (`(2)×3`).
 - The leading zero is replaced (`0` then `5` → `5`).
 - Copied results are plain numbers: no grouping, your locale's decimal separator (what local apps
