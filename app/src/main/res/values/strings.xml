@@ -1,4 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">FloatCalc</string>
+
+    <!-- Tabs -->
+    <string name="tab_default_name">Calc %1$d</string>
+
+    <!-- Errors shown in the result line -->
+    <string name="error_incomplete">Incomplete expression</string>
+    <string name="error_malformed">Invalid expression</string>
+    <string name="error_divide_by_zero">Can\'t divide by 0</string>
+    <string name="error_overflow">Number too large</string>
+
+    <!-- Keypad labels -->
+    <string name="key_label_all_clear">AC</string>
+    <string name="key_label_parentheses">( )</string>
+
+    <!-- Keypad content descriptions (read by screen readers) -->
+    <string name="key_all_clear">all clear</string>
+    <string name="key_parentheses">parentheses</string>
+    <string name="key_percent">percent</string>
+    <string name="key_divide">divide</string>
+    <string name="key_multiply">multiply</string>
+    <string name="key_minus">minus</string>
+    <string name="key_plus">plus</string>
+    <string name="key_equals">equals</string>
+    <string name="key_toggle_sign">plus minus</string>
+    <string name="key_decimal">decimal point</string>
+    <string name="backspace">backspace</string>
+    <string name="action_clear_all">clear all</string>
+
+    <!-- Display and clipboard -->
+    <string name="action_copy_result">Copy result</string>
+    <string name="action_copy_expression">Copy expression</string>
+    <string name="action_reuse_result">Use result</string>
+    <string name="copied">Copied</string>
+    <string name="clip_label">FloatCalc</string>
+
+    <!-- History -->
+    <string name="history">History</string>
+    <string name="history_clear">Clear</string>
+    <string name="history_empty">No calculations yet</string>
+
+    <!-- Top bar -->
+    <string name="action_history">History</string>
 </resources>
