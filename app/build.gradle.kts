@@ -87,15 +87,18 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
 }
 
-// Copies the built APKs into ./dist with readable names.
-val versionName = android.defaultConfig.versionName
+// Builds both APKs and copies them into ./dist with readable names.
 tasks.register<Copy>("distApks") {
-    description = "Copies debug and release APKs into <root>/dist."
+    description = "Builds the debug and release APKs and copies them into <root>/dist."
+    dependsOn("assembleDebug", "assembleRelease")
+    val version = android.defaultConfig.versionName
+    val debugName = "FloatCalc-$version-debug.apk"
+    val releaseName = "FloatCalc-$version-release.apk"
     from(layout.buildDirectory.file("outputs/apk/debug/app-debug.apk")) {
-        rename { "FloatCalc-$versionName-debug.apk" }
+        rename { debugName }
     }
     from(layout.buildDirectory.file("outputs/apk/release/app-release.apk")) {
-        rename { "FloatCalc-$versionName-release.apk" }
+        rename { releaseName }
     }
     into(rootProject.layout.projectDirectory.dir("dist"))
 }
