@@ -275,7 +275,7 @@ fun OverlayPanel(container: AppContainer, ui: OverlayUiState, actions: PanelActi
                                     onClose = ::closeTab,
                                     modifier = Modifier
                                         .fillMaxHeight()
-                                        .widthIn(max = 76.dp),
+                                        .widthIn(max = 92.dp),
                                 )
                                 AnimatedTabDisplay(
                                     tabId = tab.id,

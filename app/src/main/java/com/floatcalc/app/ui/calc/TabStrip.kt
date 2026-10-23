@@ -1,12 +1,14 @@
 package com.floatcalc.app.ui.calc
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -14,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -42,6 +45,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -190,18 +194,39 @@ private fun TabChip(
                 onClick = onClick,
             ),
     ) {
-        Text(
-            text = name,
-            style = if (dense) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .widthIn(max = if (dense) 72.dp else 180.dp)
-                .padding(
-                    horizontal = if (dense) 8.dp else 14.dp,
-                    vertical = if (dense) 4.dp else 8.dp,
-                ),
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = name,
+                style = if (dense) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .widthIn(max = if (dense) 60.dp else 160.dp)
+                    .padding(
+                        start = if (dense) 8.dp else 14.dp,
+                        end = if (dense) 2.dp else 4.dp,
+                        top = if (dense) 4.dp else 8.dp,
+                        bottom = if (dense) 4.dp else 8.dp,
+                    ),
+            )
+            // Visible close button; closing shows Undo, so a mis-tap is easy to reverse.
+            val closeDescription = stringResource(R.string.action_close_named_tab, name)
+            Box(
+                modifier = Modifier
+                    .padding(end = if (dense) 2.dp else 6.dp)
+                    .size(if (dense) 18.dp else 28.dp)
+                    .clip(CircleShape)
+                    .clickable(role = Role.Button, onClick = onClose)
+                    .semantics { contentDescription = closeDescription },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_close),
+                    contentDescription = null,
+                    modifier = Modifier.size(if (dense) 12.dp else 16.dp),
+                )
+            }
+        }
     }
 }
 
