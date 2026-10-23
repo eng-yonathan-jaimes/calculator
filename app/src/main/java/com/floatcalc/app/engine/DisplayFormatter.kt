@@ -1,0 +1,101 @@
+package com.floatcalc.app.engine
+
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.text.NumberFormat
+import java.util.Locale
+
+/**
+ * Localizes internal-notation text for display: groups integer digits and swaps in the locale's
+ * decimal separator. Digits stay 0–9 to match the keypad.
+ */
+class DisplayFormatter(
+    val decimalSeparator: Char = '.',
+    val groupingSeparator: Char = ',',
+    private val groupingSize: Int = 3,
+    private val secondaryGroupingSize: Int = groupingSize,
+) {
+    /** Formats every number inside [expression]; operators and parentheses are kept as they are. */
+    fun formatExpression(expression: String): String {
+        val out = StringBuilder(expression.length + expression.length / 3)
+        var i = 0
+        while (i < expression.length) {
+            val c = expression[i]
+            if (c.isDigit() || c == Symbols.POINT) {
+                val end = numberEnd(expression, i)
+                out.append(formatNumber(expression.substring(i, end)))
+                i = end
+            } else {
+                out.append(c)
+                i++
+            }
+        }
+        return out.toString()
+    }
+
+    /** Formats one number in internal notation, e.g. "−1234.5" → "−1,234.5" (en-US). */
+    fun formatNumber(number: String): String {
+        val sign = if (number.startsWith(Symbols.MINUS)) Symbols.MINUS.toString() else ""
+        val unsigned = number.removePrefix(sign)
+        val expIndex = unsigned.indexOf(Symbols.EXPONENT)
+        val mantissa = if (expIndex >= 0) unsigned.substring(0, expIndex) else unsigned
+        val exponent = if (expIndex >= 0) unsigned.substring(expIndex) else ""
+        val pointIndex = mantissa.indexOf(Symbols.POINT)
+        val integerPart = if (pointIndex >= 0) mantissa.substring(0, pointIndex) else mantissa
+        val fraction = if (pointIndex >= 0) decimalSeparator + mantissa.substring(pointIndex + 1) else ""
+        return sign + group(integerPart) + fraction + exponent
+    }
+
+    /**
+     * Text for the clipboard: no grouping, the locale's decimal separator and an ASCII '-', so
+     * other apps can parse it as a plain number.
+     */
+    fun toClipboardNumber(number: String): String =
+        number.replace(Symbols.MINUS, '-').replace(Symbols.POINT, decimalSeparator)
+
+    private fun group(digits: String): String {
+        if (groupingSize <= 0 || digits.length <= groupingSize) return digits
+        val groups = ArrayList<String>()
+        var end = digits.length
+        var size = groupingSize
+        while (end > size) {
+            groups += digits.substring(end - size, end)
+            end -= size
+            size = secondaryGroupingSize
+        }
+        groups += digits.substring(0, end)
+        return groups.asReversed().joinToString(groupingSeparator.toString())
+    }
+
+    private fun numberEnd(s: String, start: Int): Int {
+        var i = start
+        while (i < s.length && (s[i].isDigit() || s[i] == Symbols.POINT)) i++
+        if (i < s.length && s[i] == Symbols.EXPONENT) {
+            i++
+            if (i < s.length && (s[i] == Symbols.MINUS || s[i] == '+')) i++
+            while (i < s.length && s[i].isDigit()) i++
+        }
+        return i
+    }
+
+    companion object {
+        fun forLocale(locale: Locale): DisplayFormatter {
+            val symbols = DecimalFormatSymbols.getInstance(locale)
+            val format = NumberFormat.getInstance(locale) as? DecimalFormat
+            val primary = format?.groupingSize ?: 3
+            return DisplayFormatter(
+                decimalSeparator = symbols.decimalSeparator,
+                groupingSeparator = symbols.groupingSeparator,
+                groupingSize = if (format?.isGroupingUsed == false) 0 else primary,
+                secondaryGroupingSize = format?.toPattern()?.let { secondaryGroupingOf(it) } ?: primary,
+            )
+        }
+
+        /** "#,##,##0.###" (en-IN) has a secondary grouping of 2; "#,##0.###" has none. */
+        internal fun secondaryGroupingOf(pattern: String): Int? {
+            val integerPattern = pattern.substringBefore(';').substringBefore('.')
+            val parts = integerPattern.split(',')
+            return if (parts.size >= 3) parts[parts.size - 2].length else null
+        }
+    }
+}
