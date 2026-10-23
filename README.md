@@ -28,7 +28,7 @@ you can calculate (and copy/paste numbers) while using any app.
 - Up to 20 independent calculations ("Calc 1", "Calc 2", …), each with its own expression, result and
   history (last 100 entries).
 - Tap a tab to switch, `+` to add, swipe the display left/right to change tabs.
-- Long-press a tab: Rename, Duplicate, Close (with Undo).
+- Tap the × on a tab to close it (with Undo); long-press a tab for Rename, Duplicate, Close.
 - History (bottom sheet): tap an entry to reuse its result, long-press to copy, Clear per tab.
 - Everything is saved and survives restarts.
 
