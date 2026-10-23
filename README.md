@@ -27,7 +27,8 @@ you can calculate (and copy/paste numbers) while using any app.
 - Everything is saved and survives restarts.
 
 **Floating calculator**
-- A compact calculator panel above every app, with the same tabs, display, keypad and history.
+- A compact calculator panel (250×260 dp by default) above every app, with the same tabs, display
+  and history, and a 5×4 keypad.
 - Drag it by the header; minimize it to a bubble that snaps to the screen edge; drag the bubble onto
   the ✕ at the bottom to close it.
 - Paste numbers from other apps (📋 in the header); tap the result to copy it back.
@@ -172,8 +173,10 @@ does:
   removed again (if you haven't used it).
 
 **Floating window**
-- Header layout: drag handle (the whole empty header area drags), History/Keypad toggle, Paste,
-  Minimize, Open app, Close. The tab chips row is under the header.
+- Compact layout: a header (⠿ drag handle, + new tab, History/Keypad toggle, Paste, then Minimize,
+  Open app, Close; the empty middle of the header also drags), the tab chips stacked vertically to the
+  left of the display, and a 5×4 keypad `7 8 9 % ( )` / `4 5 6 − ÷` / `1 2 3 + ×` / `⌫ 0 . = AC` with
+  backspace as a key (long-press clears). The floating keypad has no ± key. The live result is bold.
 - Long-pressing a tab in the floating window shows an inline Rename / Duplicate / Close row instead
   of a popup menu: popups and dialogs need input focus, which the non-focusable overlay must not
   take. Close shows an Undo message inside the panel.
@@ -184,9 +187,9 @@ does:
   `FLAG_NOT_FOCUSABLE`, waits for window focus, reads, and restores the flag. If the device doesn't
   grant focus within 0.7 s, a transparent activity reads the clipboard instead. Android 12+ shows its
   own "FloatCalc pasted from your clipboard" message; that can't be turned off.
-- Size presets are S 248×400, M 280×420 (default), L 320×480 dp. If the screen is smaller (e.g.
-  landscape), the panel shrinks to fit. Keys are about 46–60 dp; the header buttons are 36 dp to
-  leave room for the keypad (the main app keeps 48 dp touch targets).
+- Size presets are S 220×230, M 250×260 (default), L 300×312 dp. If the screen is smaller (e.g.
+  landscape), the panel shrinks to fit. To stay compact, keys are about 44×33 dp at M and the header
+  buttons 30 dp (Compose still widens small touch targets); the main app keeps 48 dp touch targets.
 - The floating window hides whenever the FloatCalc app itself is on screen (including split screen,
   where both would show the same tabs) and reappears 0.25 s after you leave it, so rotating the app
   doesn't make it flicker. The transparent helper activities don't count as "the app".

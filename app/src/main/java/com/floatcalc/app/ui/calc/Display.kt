@@ -40,10 +40,12 @@ data class DisplayStyle(
     val preview: TextUnit,
     val previous: TextUnit,
     val previewLineHeight: Dp,
+    /** The floating window shows the live result bold and at full contrast. */
+    val previewEmphasized: Boolean = false,
 ) {
     companion object {
         val Regular = DisplayStyle(64.sp, 28.sp, 30.sp, 18.sp, 44.dp)
-        val Compact = DisplayStyle(36.sp, 18.sp, 18.sp, 12.sp, 26.dp)
+        val Compact = DisplayStyle(32.sp, 14.sp, 20.sp, 11.sp, 28.dp, previewEmphasized = true)
     }
 }
 
@@ -115,10 +117,14 @@ fun CalculatorDisplay(
                 when (preview) {
                     is Preview.Value -> AutoShrinkText(
                         text = formatter.formatNumber(preview.number),
-                        style = NumberTextStyle,
+                        style = if (style.previewEmphasized) {
+                            NumberTextStyle.copy(fontWeight = FontWeight.Bold)
+                        } else {
+                            NumberTextStyle
+                        },
                         maxFontSize = style.preview,
                         minFontSize = style.preview * 0.5f,
-                        color = colors.onSurfaceVariant,
+                        color = if (style.previewEmphasized) colors.onSurface else colors.onSurfaceVariant,
                         modifier = Modifier.combinedClickable(
                             interactionSource = null,
                             indication = null,

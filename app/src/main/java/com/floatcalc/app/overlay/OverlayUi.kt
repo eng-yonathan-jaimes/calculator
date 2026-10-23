@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -69,12 +71,12 @@ import com.floatcalc.app.data.CalcTab
 import com.floatcalc.app.data.TabsState
 import com.floatcalc.app.engine.CalcKey
 import com.floatcalc.app.ui.calc.AnimatedTabDisplay
-import com.floatcalc.app.ui.calc.BackspaceButton
+import com.floatcalc.app.ui.calc.KeypadLayout
 import com.floatcalc.app.ui.calc.DisplayStyle
 import com.floatcalc.app.ui.calc.HistoryList
 import com.floatcalc.app.ui.calc.Keypad
 import com.floatcalc.app.ui.calc.LocalHapticsEnabled
-import com.floatcalc.app.ui.calc.TabStrip
+import com.floatcalc.app.ui.calc.TabColumn
 import com.floatcalc.app.ui.calc.detectHorizontalSwipe
 import com.floatcalc.app.ui.calc.rememberDisplayFormatter
 import com.floatcalc.app.ui.calc.rememberRenameFieldState
@@ -171,7 +173,8 @@ private fun OverlayTheme(container: AppContainer, content: @Composable () -> Uni
     FloatCalcTheme(settings.theme) {
         CompositionLocalProvider(
             LocalHapticsEnabled provides settings.haptics,
-            LocalMinimumInteractiveComponentSize provides 36.dp,
+            // Compact like the rest of the panel; Compose still extends small touch targets.
+            LocalMinimumInteractiveComponentSize provides 0.dp,
             content = content,
         )
     }
@@ -197,30 +200,41 @@ fun OverlayPanel(container: AppContainer, ui: OverlayUiState, actions: PanelActi
             if (cancelSignal != initialCancelSignal) renameTabId = null
         }
 
-        fun closeTab(target: CalcTab, name: String) {
+        fun closeTab(target: CalcTab) {
+            val name = resources.tabName(target)
             val closed = tabs.closeTab(target.id) ?: return
             actions.showMessage(OverlayMessage(resources.getString(R.string.tab_closed, name), undoLabel) { tabs.restoreTab(closed) })
         }
 
+        fun duplicateTab(target: CalcTab) {
+            if (!tabs.duplicateTab(target.id)) actions.showMessage(OverlayMessage(tooManyTabs))
+        }
+
         Surface(
             modifier = Modifier.fillMaxSize(),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surfaceContainer,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
         ) {
             Box(Modifier.fillMaxSize()) {
-                Column(Modifier.fillMaxSize()) {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(start = 6.dp, end = 6.dp, bottom = 6.dp),
+                ) {
                     PanelHeader(
                         dragTracker = dragTracker,
                         showHistory = showHistory,
                         onToggleHistory = { showHistory = !showHistory },
+                        onAddTab = { if (!tabs.addTab()) actions.showMessage(OverlayMessage(tooManyTabs)) },
                         actions = actions,
                     )
+                    // Tabs stacked on the left, display on the right (or the tab options / rename row).
                     Box(
                         Modifier
-                            .fillMaxWidth()
-                            .height(40.dp),
-                        contentAlignment = Alignment.CenterStart,
+                            .weight(0.5f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center,
                     ) {
                         val renaming = renameTabId?.let { id -> tabsState.tabs.firstOrNull { it.id == id } }
                         val actionTab = actionsTabId?.let { id -> tabsState.tabs.firstOrNull { it.id == id } }
@@ -235,72 +249,56 @@ fun OverlayPanel(container: AppContainer, ui: OverlayUiState, actions: PanelActi
                                 onCancel = { renameTabId = null },
                                 actions = actions,
                             )
-                            actionTab != null -> {
-                                val name = tabName(actionTab)
-                                TabActionsRow(
-                                    onRename = {
-                                        actionsTabId = null
-                                        renameTabId = actionTab.id
-                                    },
-                                    onDuplicate = {
-                                        actionsTabId = null
-                                        if (!tabs.duplicateTab(actionTab.id)) actions.showMessage(OverlayMessage(tooManyTabs))
-                                    },
-                                    onClose = {
-                                        actionsTabId = null
-                                        closeTab(actionTab, name)
-                                    },
-                                    onDismiss = { actionsTabId = null },
-                                )
-                            }
-                            else -> {
-                                TabStrip(
+                            actionTab != null -> TabActionsRow(
+                                onRename = {
+                                    actionsTabId = null
+                                    renameTabId = actionTab.id
+                                },
+                                onDuplicate = {
+                                    actionsTabId = null
+                                    duplicateTab(actionTab)
+                                },
+                                onClose = {
+                                    actionsTabId = null
+                                    closeTab(actionTab)
+                                },
+                                onDismiss = { actionsTabId = null },
+                            )
+                            else -> Row(Modifier.fillMaxSize()) {
+                                TabColumn(
                                     tabs = tabsState.tabs,
                                     selectedId = tabsState.selectedId,
                                     onSelect = { tabs.selectTab(it.id) },
-                                    onAdd = { if (!tabs.addTab()) actions.showMessage(OverlayMessage(tooManyTabs)) },
                                     onLongPress = { actionsTabId = it.id },
                                     onRename = { renameTabId = it.id },
-                                    onDuplicate = {
-                                        if (!tabs.duplicateTab(it.id)) actions.showMessage(OverlayMessage(tooManyTabs))
-                                    },
-                                    onClose = { closeTab(it, resources.tabName(it)) },
-                                    compact = true,
+                                    onDuplicate = ::duplicateTab,
+                                    onClose = ::closeTab,
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .widthIn(max = 76.dp),
+                                )
+                                AnimatedTabDisplay(
+                                    tabId = tab.id,
+                                    tabIndex = tabsState.selectedIndex,
+                                    calc = tab.calc,
+                                    formatter = formatter,
+                                    onCopyResult = { actions.onCopy(formatter.toClipboardNumber(it)) },
+                                    onCopyExpression = { actions.onCopy(it) },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                        .padding(start = 8.dp, end = 4.dp)
+                                        .pointerInput(tabs) { detectHorizontalSwipe { tabs.selectRelative(it) } },
+                                    style = DisplayStyle.Compact,
                                 )
                             }
                         }
-                    }
-                    Row(
-                        modifier = Modifier
-                            .weight(0.26f)
-                            .fillMaxWidth()
-                            .padding(start = 12.dp, end = 2.dp)
-                            .pointerInput(tabs) { detectHorizontalSwipe { tabs.selectRelative(it) } },
-                        verticalAlignment = Alignment.Bottom,
-                    ) {
-                        AnimatedTabDisplay(
-                            tabId = tab.id,
-                            tabIndex = tabsState.selectedIndex,
-                            calc = tab.calc,
-                            formatter = formatter,
-                            onCopyResult = { actions.onCopy(formatter.toClipboardNumber(it)) },
-                            onCopyExpression = { actions.onCopy(it) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight(),
-                            style = DisplayStyle.Compact,
-                        )
-                        BackspaceButton(
-                            onBackspace = { tabs.press(CalcKey.Backspace) },
-                            onClear = { tabs.press(CalcKey.Clear) },
-                            size = 36.dp,
-                        )
                     }
                     Box(
                         Modifier
                             .weight(1f)
                             .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                            .padding(top = 4.dp),
                     ) {
                         if (showHistory) {
                             HistoryList(
@@ -316,7 +314,12 @@ fun OverlayPanel(container: AppContainer, ui: OverlayUiState, actions: PanelActi
                                 compact = true,
                             )
                         } else {
-                            Keypad(onKey = tabs::press, modifier = Modifier.fillMaxSize(), spacing = 5.dp)
+                            Keypad(
+                                onKey = tabs::press,
+                                modifier = Modifier.fillMaxSize(),
+                                spacing = 4.dp,
+                                layout = KeypadLayout.Compact,
+                            )
                         }
                     }
                 }
@@ -326,41 +329,48 @@ fun OverlayPanel(container: AppContainer, ui: OverlayUiState, actions: PanelActi
     }
 }
 
+/** ⠿ + [history] [paste] ··· _ ⧉ ✕ — the handle and the empty middle drag the window. */
 @Composable
 private fun PanelHeader(
     dragTracker: DragTracker,
     showHistory: Boolean,
     onToggleHistory: () -> Unit,
+    onAddTab: () -> Unit,
     actions: PanelActions,
 ) {
     Row(
         Modifier
             .fillMaxWidth()
-            .height(36.dp),
+            .height(32.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .weight(1f)
+                .width(28.dp)
                 .fillMaxHeight()
                 .dragWith(dragTracker),
-            contentAlignment = Alignment.CenterStart,
+            contentAlignment = Alignment.Center,
         ) {
             Icon(
                 painter = painterResource(R.drawable.ic_drag),
                 contentDescription = stringResource(R.string.overlay_drag_handle),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .padding(start = 8.dp)
-                    .size(20.dp),
+                modifier = Modifier.size(18.dp),
             )
         }
+        HeaderButton(R.drawable.ic_add, stringResource(R.string.action_add_tab), onAddTab)
         HeaderButton(
             icon = if (showHistory) R.drawable.ic_dialpad else R.drawable.ic_history,
             description = stringResource(if (showHistory) R.string.overlay_show_keypad else R.string.overlay_show_history),
             onClick = onToggleHistory,
         )
         HeaderButton(R.drawable.ic_paste, stringResource(R.string.action_paste), actions::onPaste)
+        Box(
+            Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .dragWith(dragTracker),
+        )
         HeaderButton(R.drawable.ic_minimize, stringResource(R.string.overlay_minimize), actions::onMinimize)
         HeaderButton(R.drawable.ic_open_app, stringResource(R.string.overlay_open_app), actions::onOpenApp)
         HeaderButton(R.drawable.ic_close, stringResource(R.string.action_close), actions::onClose)
@@ -369,8 +379,8 @@ private fun PanelHeader(
 
 @Composable
 private fun HeaderButton(icon: Int, description: String, onClick: () -> Unit) {
-    IconButton(onClick = onClick, modifier = Modifier.size(36.dp)) {
-        Icon(painterResource(icon), contentDescription = description, modifier = Modifier.size(20.dp))
+    IconButton(onClick = onClick, modifier = Modifier.size(30.dp)) {
+        Icon(painterResource(icon), contentDescription = description, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -396,7 +406,7 @@ private fun TabActionsRow(onRename: () -> Unit, onDuplicate: () -> Unit, onClose
 @Composable
 private fun CompactTextButton(text: String, onClick: () -> Unit) {
     TextButton(onClick = onClick, contentPadding = PaddingValues(horizontal = 8.dp)) {
-        Text(text, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+        Text(text, style = MaterialTheme.typography.labelSmall, maxLines = 1)
     }
 }
 

@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -67,25 +69,16 @@ fun TabStrip(
     onDuplicate: (CalcTab) -> Unit,
     onClose: (CalcTab) -> Unit,
     modifier: Modifier = Modifier,
-    compact: Boolean = false,
     anchored: @Composable (CalcTab) -> Unit = {},
 ) {
     val listState = rememberLazyListState()
-    val selectedIndex = tabs.indexOfFirst { it.id == selectedId }
-    LaunchedEffect(selectedIndex, tabs.size) {
-        if (selectedIndex < 0) return@LaunchedEffect
-        val info = listState.layoutInfo
-        val item = info.visibleItemsInfo.firstOrNull { it.index == selectedIndex }
-        val fullyVisible = item != null && item.offset >= info.viewportStartOffset &&
-            item.offset + item.size <= info.viewportEndOffset
-        if (!fullyVisible) listState.animateScrollToItem(selectedIndex)
-    }
+    KeepSelectedVisible(listState, tabs.indexOfFirst { it.id == selectedId }, tabs.size)
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         LazyRow(
             state = listState,
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 8.dp),
-            contentPadding = PaddingValues(horizontal = if (compact) 4.dp else 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             itemsIndexed(tabs, key = { _, tab -> tab.id }) { _, tab ->
@@ -93,7 +86,7 @@ fun TabStrip(
                     TabChip(
                         name = tabName(tab),
                         selected = tab.id == selectedId,
-                        compact = compact,
+                        dense = false,
                         onClick = { onSelect(tab) },
                         onLongPress = { onLongPress(tab) },
                         onRename = { onRename(tab) },
@@ -104,9 +97,57 @@ fun TabStrip(
                 }
             }
         }
-        IconButton(onClick = onAdd, modifier = if (compact) Modifier.size(40.dp) else Modifier) {
+        IconButton(onClick = onAdd) {
             Icon(painterResource(R.drawable.ic_add), stringResource(R.string.action_add_tab))
         }
+    }
+}
+
+/** Small tab chips stacked vertically, for the floating window (the "+" lives in its header). */
+@Composable
+fun TabColumn(
+    tabs: List<CalcTab>,
+    selectedId: Long,
+    onSelect: (CalcTab) -> Unit,
+    onLongPress: (CalcTab) -> Unit,
+    onRename: (CalcTab) -> Unit,
+    onDuplicate: (CalcTab) -> Unit,
+    onClose: (CalcTab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val listState = rememberLazyListState()
+    KeepSelectedVisible(listState, tabs.indexOfFirst { it.id == selectedId }, tabs.size)
+    LazyColumn(
+        state = listState,
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        contentPadding = PaddingValues(vertical = 4.dp),
+    ) {
+        items(tabs, key = { it.id }) { tab ->
+            TabChip(
+                name = tabName(tab),
+                selected = tab.id == selectedId,
+                dense = true,
+                onClick = { onSelect(tab) },
+                onLongPress = { onLongPress(tab) },
+                onRename = { onRename(tab) },
+                onDuplicate = { onDuplicate(tab) },
+                onClose = { onClose(tab) },
+            )
+        }
+    }
+}
+
+/** Scrolls a tab list just enough to show the selected tab after it changes. */
+@Composable
+private fun KeepSelectedVisible(listState: LazyListState, selectedIndex: Int, count: Int) {
+    LaunchedEffect(selectedIndex, count) {
+        if (selectedIndex < 0) return@LaunchedEffect
+        val info = listState.layoutInfo
+        val item = info.visibleItemsInfo.firstOrNull { it.index == selectedIndex }
+        val fullyVisible = item != null && item.offset >= info.viewportStartOffset &&
+            item.offset + item.size <= info.viewportEndOffset
+        if (!fullyVisible) listState.animateScrollToItem(selectedIndex)
     }
 }
 
@@ -114,7 +155,7 @@ fun TabStrip(
 private fun TabChip(
     name: String,
     selected: Boolean,
-    compact: Boolean,
+    dense: Boolean,
     onClick: () -> Unit,
     onLongPress: () -> Unit,
     onRename: () -> Unit,
@@ -122,7 +163,7 @@ private fun TabChip(
     onClose: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(if (compact) 8.dp else 12.dp)
+    val shape = RoundedCornerShape(if (dense) 8.dp else 12.dp)
     val renameLabel = stringResource(R.string.action_rename_tab)
     val duplicateLabel = stringResource(R.string.action_duplicate_tab)
     val closeLabel = stringResource(R.string.action_close_tab)
@@ -151,14 +192,14 @@ private fun TabChip(
     ) {
         Text(
             text = name,
-            style = if (compact) MaterialTheme.typography.labelMedium else MaterialTheme.typography.labelLarge,
+            style = if (dense) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelLarge,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
-                .widthIn(max = if (compact) 120.dp else 180.dp)
+                .widthIn(max = if (dense) 72.dp else 180.dp)
                 .padding(
-                    horizontal = if (compact) 10.dp else 14.dp,
-                    vertical = if (compact) 6.dp else 8.dp,
+                    horizontal = if (dense) 8.dp else 14.dp,
+                    vertical = if (dense) 4.dp else 8.dp,
                 ),
         )
     }
