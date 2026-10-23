@@ -61,7 +61,7 @@ import com.floatcalc.app.util.Clipboard
 import kotlinx.coroutines.launch
 
 @Composable
-fun CalculatorScreen(container: AppContainer, onFloat: () -> Unit) {
+fun CalculatorScreen(container: AppContainer, onFloat: () -> Unit, onOpenSettings: () -> Unit) {
     val context = LocalContext.current
     val resources = LocalResources.current
     val tabs = container.tabs
@@ -153,6 +153,9 @@ fun CalculatorScreen(container: AppContainer, onFloat: () -> Unit) {
                 }
                 IconButton(onClick = onFloat) {
                     Icon(painterResource(R.drawable.ic_float), stringResource(R.string.action_float))
+                }
+                IconButton(onClick = onOpenSettings) {
+                    Icon(painterResource(R.drawable.ic_settings), stringResource(R.string.settings))
                 }
             }
         },
