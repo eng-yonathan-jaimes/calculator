@@ -30,8 +30,8 @@ you can calculate (and copy/paste numbers) while using any app.
 - Tap a tab to switch, `+` to add, swipe the display left/right to change tabs.
 - A tab shows its name while empty, then the live result (`=95`, at most 4 digits) or the operation
   being entered (`12+`).
-- Long-press a tab for Rename, Duplicate, Close (with Undo); hold it
-  for a second to show a red delete button (with Undo).
+- Long-press a tab for Rename, Duplicate, Close (with Undo). In the floating window, holding a tab
+  for a second shows a red delete button under it instead.
 - History (bottom sheet): tap an entry to reuse its result, long-press to copy, Clear per tab.
 - Everything is saved and survives restarts.
 
@@ -186,10 +186,11 @@ does:
   default name and is placed right after its source.
 - Undo puts a closed tab back where it was. If it was the last tab, the empty replacement tab is
   removed again (if you haven't used it).
-- Holding a tab: released after the normal long-press time it opens the options; held for 1 s it
-  shows the delete button instead (beside the chip in the app, under it in the floating window),
-  which hides again after 4 s. Each stage gives a haptic tick. Screen readers keep the tab's name and
-  hear the result as its state.
+- Tab chips have a fixed width, so the strip doesn't shift while the labels change. Screen readers
+  keep the tab's name and hear the result as its state.
+- Holding a tab in the floating window: released after the normal long-press time it opens the
+  options; held for 1 s it shows the delete button under the chip instead, which hides again after
+  4 s. Each stage gives a haptic tick. In the app, long-press opens the menu right away as before.
 - Tab results longer than 4 digits are rounded (3.14159 → `=3.142`) or switch to scientific
   notation with the exponent counted in the 4 digits (12345 → `=1.23E4`).
 

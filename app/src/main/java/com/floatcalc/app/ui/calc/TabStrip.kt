@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
@@ -82,10 +81,13 @@ private const val DELETE_HOLD_MILLIS = 1_000L
 /** How long the delete button stays up when it is not used. */
 private const val DELETE_BUTTON_MILLIS = 4_000L
 
+/** Tab chip widths: what "Calc 1" plus the old close button took, in the app and the floating window. */
+private val CHIP_WIDTH = 90.dp
+private val DENSE_CHIP_WIDTH = 60.dp
+
 /**
- * Scrollable tab chips plus a "+" button. Long-press on a chip calls [onLongPress] and holding it
- * for a second shows a delete button beside it; [anchored] is placed inside each chip's box so
- * callers can anchor a menu to it.
+ * Scrollable tab chips plus a "+" button. Long-press on a chip calls [onLongPress]; [anchored]
+ * is placed inside each chip's box so callers can anchor a menu to it.
  */
 @Composable
 fun TabStrip(
@@ -102,7 +104,6 @@ fun TabStrip(
 ) {
     val listState = rememberLazyListState()
     val formatter = rememberDisplayFormatter()
-    var deleteShownId by rememberDeleteShownId()
     KeepSelectedVisible(listState, tabs.indexOfFirst { it.id == selectedId }, tabs.size)
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         LazyRow(
@@ -114,39 +115,19 @@ fun TabStrip(
         ) {
             itemsIndexed(tabs, key = { _, tab -> tab.id }) { _, tab ->
                 val name = tabName(tab)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box {
-                        TabChip(
-                            name = name,
-                            label = tabLabel(tab, name, formatter),
-                            selected = tab.id == selectedId,
-                            dense = false,
-                            onClick = {
-                                deleteShownId = null
-                                onSelect(tab)
-                            },
-                            onLongPress = {
-                                deleteShownId = null
-                                onLongPress(tab)
-                            },
-                            onHoldDelete = { deleteShownId = tab.id },
-                            onRename = { onRename(tab) },
-                            onDuplicate = { onDuplicate(tab) },
-                            onClose = { onClose(tab) },
-                        )
-                        anchored(tab)
-                    }
-                    AnimatedVisibility(deleteShownId == tab.id) {
-                        DeleteTabButton(
-                            name = name,
-                            dense = false,
-                            onClick = {
-                                deleteShownId = null
-                                onClose(tab)
-                            },
-                            modifier = Modifier.padding(start = 4.dp),
-                        )
-                    }
+                Box {
+                    TabChip(
+                        name = name,
+                        label = tabLabel(tab, name, formatter),
+                        selected = tab.id == selectedId,
+                        dense = false,
+                        onClick = { onSelect(tab) },
+                        onLongPress = { onLongPress(tab) },
+                        onRename = { onRename(tab) },
+                        onDuplicate = { onDuplicate(tab) },
+                        onClose = { onClose(tab) },
+                    )
+                    anchored(tab)
                 }
             }
         }
@@ -202,7 +183,6 @@ fun TabColumn(
                     onRename = { onRename(tab) },
                     onDuplicate = { onDuplicate(tab) },
                     onClose = { onClose(tab) },
-                    modifier = Modifier.fillMaxWidth(),
                 )
                 AnimatedVisibility(deleteShownId == tab.id) {
                     DeleteTabButton(
@@ -259,14 +239,18 @@ private fun tabLabel(tab: CalcTab, name: String, formatter: DisplayFormatter): S
     }
 
 /**
- * Press-and-hold on a chip. Released after the long-press timeout it calls [onOptions]; held for
- * [DELETE_HOLD_MILLIS] it calls [onDelete] instead. Either way the release is consumed so it does
- * not also select the tab. Moving the finger (e.g. scrolling) cancels it.
+ * Press-and-hold on a chip. Without [onDelete] it calls [onOptions] once the long-press timeout
+ * passes. With it, releasing after that timeout calls [onOptions] and holding for
+ * [DELETE_HOLD_MILLIS] calls [onDelete] instead. Either way the release is consumed so it does not
+ * also select the tab. Moving the finger (e.g. scrolling) cancels it.
  */
-private suspend fun PointerInputScope.detectHold(onStage: () -> Unit, onOptions: () -> Unit, onDelete: () -> Unit) {
+private suspend fun PointerInputScope.detectHold(onStage: () -> Unit, onOptions: () -> Unit, onDelete: (() -> Unit)?) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-        val deadlines = listOf(viewConfiguration.longPressTimeoutMillis, DELETE_HOLD_MILLIS)
+        val deadlines = listOfNotNull(
+            viewConfiguration.longPressTimeoutMillis,
+            DELETE_HOLD_MILLIS.takeIf { onDelete != null },
+        )
         var stage = 0
         while (true) {
             val deadline = deadlines.getOrNull(stage)
@@ -279,13 +263,16 @@ private suspend fun PointerInputScope.detectHold(onStage: () -> Unit, onOptions:
             if (event == null) {
                 stage++
                 onStage()
-                if (stage == deadlines.size) onDelete()
+                when {
+                    onDelete == null -> onOptions()
+                    stage == deadlines.size -> onDelete()
+                }
                 continue
             }
             val change = event.changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
             if (change.changedToUpIgnoreConsumed()) {
                 if (stage > 0) change.consume()
-                if (stage == 1) onOptions()
+                if (stage == 1 && onDelete != null) onOptions()
                 return@awaitEachGesture
             }
             if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop) return@awaitEachGesture
@@ -326,11 +313,12 @@ private fun TabChip(
     dense: Boolean,
     onClick: () -> Unit,
     onLongPress: () -> Unit,
-    onHoldDelete: () -> Unit,
     onRename: () -> Unit,
     onDuplicate: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Set to show a delete button after a one-second hold (the floating window, which has no menu). */
+    onHoldDelete: (() -> Unit)? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(if (dense) 8.dp else 12.dp)
@@ -348,6 +336,8 @@ private fun TabChip(
         border = if (selected) null else BorderStroke(1.dp, colors.outlineVariant),
         modifier = modifier
             .minimumInteractiveComponentSize()
+            // Fixed, so the strip doesn't jump around while the label follows the calculation.
+            .width(if (dense) DENSE_CHIP_WIDTH else CHIP_WIDTH)
             .clip(shape)
             .semantics {
                 this.selected = selected
@@ -361,11 +351,11 @@ private fun TabChip(
                 )
             }
             // Before the click handler, so a long hold can consume the release.
-            .pointerInput(haptics) {
+            .pointerInput(haptics, onHoldDelete != null) {
                 detectHold(
                     onStage = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) },
                     onOptions = { latestLongPress() },
-                    onDelete = { latestHoldDelete() },
+                    onDelete = if (onHoldDelete != null) ({ latestHoldDelete?.invoke() }) else null,
                 )
             }
             .clickable(role = Role.Tab, onClick = onClick),
@@ -376,12 +366,10 @@ private fun TabChip(
                 style = if (dense) MaterialTheme.typography.labelSmall else MaterialTheme.typography.labelLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .widthIn(max = if (dense) 60.dp else 160.dp)
-                    .padding(
-                        horizontal = if (dense) 8.dp else 14.dp,
-                        vertical = if (dense) 4.dp else 8.dp,
-                    ),
+                modifier = Modifier.padding(
+                    horizontal = if (dense) 4.dp else 8.dp,
+                    vertical = if (dense) 4.dp else 8.dp,
+                ),
             )
         }
     }
