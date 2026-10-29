@@ -57,6 +57,7 @@ import com.floatcalc.app.data.TabsState
 import com.floatcalc.app.engine.CalcKey
 import com.floatcalc.app.engine.CalcState
 import com.floatcalc.app.engine.DisplayFormatter
+import com.floatcalc.app.engine.PasteParser
 import com.floatcalc.app.util.Clipboard
 import kotlinx.coroutines.launch
 
@@ -98,6 +99,16 @@ fun CalculatorScreen(container: AppContainer, onFloat: () -> Unit, onOpenSetting
 
     fun duplicateTab(target: CalcTab) {
         if (!tabs.duplicateTab(target.id)) showMessage(tooManyTabs)
+    }
+
+    fun paste() {
+        val text = Clipboard.readText(context)
+        val parsed = text?.let { PasteParser.parse(it, formatter.decimalSeparator, formatter.groupingSeparator) }
+        when {
+            parsed != null -> tabs.insert(parsed)
+            text.isNullOrBlank() -> showMessage(resources.getString(R.string.paste_empty))
+            else -> showMessage(resources.getString(R.string.paste_invalid))
+        }
     }
 
     Scaffold(
@@ -170,6 +181,7 @@ fun CalculatorScreen(container: AppContainer, onFloat: () -> Unit, onOpenSetting
             onCopyExpression = { Clipboard.copy(context, it) },
             onMoveCursor = tabs::moveCursor,
             onEditPrevious = tabs::editPrevious,
+            onPaste = ::paste,
             modifier = Modifier
                 .padding(padding)
                 .consumeWindowInsets(padding),
@@ -220,6 +232,7 @@ fun AnimatedTabDisplay(
     style: DisplayStyle = DisplayStyle.Regular,
     onMoveCursor: (Int?) -> Unit = {},
     onEditPrevious: () -> Unit = {},
+    onPaste: (() -> Unit)? = null,
 ) {
     AnimatedContent(
         targetState = DisplayPage(tabId, tabIndex, calc),
@@ -240,6 +253,7 @@ fun AnimatedTabDisplay(
             style = style,
             onMoveCursor = onMoveCursor,
             onEditPrevious = onEditPrevious,
+            onPaste = onPaste,
         )
     }
 }
@@ -259,6 +273,7 @@ fun CalculatorContent(
     onCopyExpression: (String) -> Unit,
     onMoveCursor: (Int?) -> Unit,
     onEditPrevious: () -> Unit,
+    onPaste: () -> Unit,
     modifier: Modifier = Modifier,
     displayModifier: Modifier = Modifier,
 ) {
@@ -275,6 +290,7 @@ fun CalculatorContent(
                 modifier = m.then(displayModifier),
                 onMoveCursor = onMoveCursor,
                 onEditPrevious = onEditPrevious,
+                onPaste = onPaste,
             )
         }
         if (sideBySide) {

@@ -22,7 +22,8 @@ you can calculate (and copy/paste numbers) while using any app.
 - **Caret editing:** tap anywhere in the expression to place a blinking caret, then type, paste or
   backspace there to fix a single digit. After `=`, tap the small calculation above the result to
   bring it back for editing.
-- Tap the result to copy it, long-press the expression to copy the expression.
+- Tap the result to copy it. Long-press the expression for Copy / Paste: Paste puts the copied number
+  at the caret (the floating window copies on long-press and pastes from its header).
 
 **Tabs**
 - Up to 20 independent calculations ("Calc 1", "Calc 2", …), each with its own expression, result and

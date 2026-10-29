@@ -48,6 +48,7 @@
     <string name="action_copy_expression">Copy expression</string>
     <string name="action_edit_calculation">Edit calculation</string>
     <string name="action_reuse_result">Use result</string>
+    <string name="action_copy">Copy</string>
     <string name="copied">Copied</string>
     <string name="clip_label">FloatCalc</string>
 

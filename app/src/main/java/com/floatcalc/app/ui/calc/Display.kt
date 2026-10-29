@@ -6,16 +6,23 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.semantics
@@ -59,8 +66,9 @@ private val NumberTextStyle = TextStyle(textDirection = TextDirection.Ltr)
  * Expression with the live result right below it, both at the top of the display; a long
  * expression narrows, then wraps downward. Tapping the expression places the caret
  * ([onMoveCursor], an index into the internal expression); tapping a result copies it;
- * long-pressing the expression copies the expression. After "=", tapping the small previous
- * expression brings it back for editing ([onEditPrevious]).
+ * long-pressing the expression copies the expression, or, when [onPaste] is set, opens a
+ * Copy / Paste menu. After "=", tapping the small previous expression brings it back for editing
+ * ([onEditPrevious]).
  */
 @Composable
 fun CalculatorDisplay(
@@ -72,6 +80,8 @@ fun CalculatorDisplay(
     style: DisplayStyle = DisplayStyle.Regular,
     onMoveCursor: (Int?) -> Unit = {},
     onEditPrevious: () -> Unit = {},
+    /** Null in the floating window: popup menus need focus, so it pastes from its header instead. */
+    onPaste: (() -> Unit)? = null,
 ) {
     val preview = remember(calc) { CalcEditor.preview(calc) }
     val formatted = remember(calc.expression, formatter) { formatter.formatExpressionMapped(calc.expression) }
@@ -79,6 +89,7 @@ fun CalculatorDisplay(
     val copyResultLabel = stringResource(R.string.action_copy_result)
     val copyExpressionLabel = stringResource(R.string.action_copy_expression)
     val editLabel = stringResource(R.string.action_edit_calculation)
+    val pasteLabel = stringResource(R.string.action_paste)
 
     // Numbers and operators always read left to right, also in RTL locales.
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
@@ -106,41 +117,78 @@ fun CalculatorDisplay(
             } else {
                 null
             }
-            AutoShrinkText(
-                text = expressionText.ifEmpty { "0" },
-                style = NumberTextStyle.copy(fontWeight = FontWeight.Normal),
-                maxFontSize = style.expressionMax,
-                minFontSize = style.expressionMin,
-                wrapFontSize = style.expressionWrap,
-                color = if (expressionText.isEmpty()) colors.onSurfaceVariant else colors.onSurface,
-                caretOffset = caret?.let { formatted.displayOffset(it) },
-                caretColor = colors.primary,
-                onTapOffset = { offset ->
-                    when {
-                        calc.evaluated -> onCopyResult(calc.expression)
-                        expressionText.isNotEmpty() -> onMoveCursor(formatted.internalOffset(offset))
-                    }
-                },
-                onLongPress = { if (expressionText.isNotEmpty()) onCopyExpression(expressionText) },
-                modifier = Modifier
+            var menuOpen by remember { mutableStateOf(false) }
+            // Takes only the height it needs, up to what's left above the result line.
+            Box(
+                Modifier
                     .fillMaxWidth()
-                    // Takes only the height it needs, up to what's left above the result line.
-                    .weight(1f, fill = false)
-                    .semantics {
-                        if (calc.evaluated) {
-                            onClick(label = copyResultLabel) {
-                                onCopyResult(calc.expression)
-                                true
-                            }
-                        }
-                        if (expressionText.isNotEmpty()) {
-                            onLongClick(label = copyExpressionLabel) {
-                                onCopyExpression(expressionText)
-                                true
-                            }
+                    .weight(1f, fill = false),
+            ) {
+                AutoShrinkText(
+                    text = expressionText.ifEmpty { "0" },
+                    style = NumberTextStyle.copy(fontWeight = FontWeight.Normal),
+                    maxFontSize = style.expressionMax,
+                    minFontSize = style.expressionMin,
+                    wrapFontSize = style.expressionWrap,
+                    color = if (expressionText.isEmpty()) colors.onSurfaceVariant else colors.onSurface,
+                    caretOffset = caret?.let { formatted.displayOffset(it) },
+                    caretColor = colors.primary,
+                    onTapOffset = { offset ->
+                        when {
+                            calc.evaluated -> onCopyResult(calc.expression)
+                            expressionText.isNotEmpty() -> onMoveCursor(formatted.internalOffset(offset))
                         }
                     },
-            )
+                    onLongPress = {
+                        when {
+                            onPaste != null -> menuOpen = true
+                            expressionText.isNotEmpty() -> onCopyExpression(expressionText)
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics {
+                            if (calc.evaluated) {
+                                onClick(label = copyResultLabel) {
+                                    onCopyResult(calc.expression)
+                                    true
+                                }
+                            }
+                            if (expressionText.isNotEmpty()) {
+                                onLongClick(label = copyExpressionLabel) {
+                                    onCopyExpression(expressionText)
+                                    true
+                                }
+                            }
+                            if (onPaste != null) {
+                                customActions = listOf(CustomAccessibilityAction(pasteLabel) { onPaste(); true })
+                            }
+                        },
+                )
+                // Anchored at the end, under the numbers, since they are right-aligned.
+                if (onPaste != null) {
+                    Box(Modifier.align(Alignment.BottomEnd)) {
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            if (expressionText.isNotEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.action_copy)) },
+                                    onClick = {
+                                        menuOpen = false
+                                        onCopyExpression(expressionText)
+                                    },
+                                )
+                            }
+                            DropdownMenuItem(
+                                text = { Text(pasteLabel) },
+                                onClick = {
+                                    menuOpen = false
+                                    onPaste()
+                                },
+                            )
+                        }
+                    }
+                }
+            }
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
