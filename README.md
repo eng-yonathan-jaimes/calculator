@@ -28,7 +28,10 @@ you can calculate (and copy/paste numbers) while using any app.
 - Up to 20 independent calculations ("Calc 1", "Calc 2", …), each with its own expression, result and
   history (last 100 entries).
 - Tap a tab to switch, `+` to add, swipe the display left/right to change tabs.
-- Tap the × on a tab to close it (with Undo); long-press a tab for Rename, Duplicate, Close.
+- A tab shows its name while empty, then the live result (`=95`, at most 4 digits) or the operation
+  being entered (`12+`).
+- Long-press a tab for Rename, Duplicate, Close (with Undo); hold it
+  for a second to show a red delete button (with Undo).
 - History (bottom sheet): tap an entry to reuse its result, long-press to copy, Clear per tab.
 - Everything is saved and survives restarts.
 
@@ -183,6 +186,12 @@ does:
   default name and is placed right after its source.
 - Undo puts a closed tab back where it was. If it was the last tab, the empty replacement tab is
   removed again (if you haven't used it).
+- Holding a tab: released after the normal long-press time it opens the options; held for 1 s it
+  shows the delete button instead (beside the chip in the app, under it in the floating window),
+  which hides again after 4 s. Each stage gives a haptic tick. Screen readers keep the tab's name and
+  hear the result as its state.
+- Tab results longer than 4 digits are rounded (3.14159 → `=3.142`) or switch to scientific
+  notation with the exponent counted in the 4 digits (12345 → `=1.23E4`).
 
 **Floating window**
 - Compact layout: a header (⠿ drag handle, + new tab, History/Keypad toggle, Paste, then Minimize,
@@ -250,6 +259,7 @@ does:
 - `CalcEditorTest`: input rules: live preview, `=` and gentle errors, behavior after `=`, exact
   chaining, operator replacement, one decimal point per number, leading zero, smart parentheses,
   `±`, `%`, backspace/clear, paste insertion, editing at the caret, editing the previous calculation.
+- `TabSummaryTest`: tab labels (empty, result, pending operation) and shortening to 4 digits.
 - `PasteParserTest`: numbers, grouping/currency stripping, locale-ambiguous separators, simple
   expressions, rejecting unusable text.
 - `TabOpsTest` / `TabsRepositoryTest`: add, close (incl. last tab), undo, rename, duplicate, 20-tab
